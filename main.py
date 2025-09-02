@@ -144,6 +144,7 @@ try:
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
     calendar1_events = updateCal(["calendar1"])
+    process_upcoming_events(list(calendar1_events[0].events), event_amt=5)
     calendars = updateCal(["calendar2", "calendar3"])
 
     # Add dummy event
@@ -157,9 +158,6 @@ try:
     dummy_event.begin = dummy_start
     dummy_event.end = dummy_end
     calendars.append(dummy_event)
-
-    # Draw calendar 1 events (up to 5)
-    process_upcoming_events(list(calendar1_events.events), event_amt=5)
 
     # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
     merged_calendar = merge_calendars(calendars)
