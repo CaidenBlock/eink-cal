@@ -75,22 +75,29 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
     pixels_per_minute = vertical_pixels / time_window_minutes
 
     for event in events:
-        print(event.name)
         event_start = event.begin.datetime
         event_end = event.end.datetime
 
         # Ensure timezone-aware (assume UTC if naive)
         if event_start.tzinfo is None:
+            logging.info(f"{event.name}: event_start naive, assuming UTC")
             event_start = event_start.replace(tzinfo=datetime.timezone.utc)
         if event_end.tzinfo is None:
+            logging.info(f"{event.name}: event_end naive, assuming UTC")
             event_end = event_end.replace(tzinfo=datetime.timezone.utc)
 
         # Convert to Central Time
         event_start = event_start.astimezone(tz)
         event_end = event_end.astimezone(tz)
 
+        logging.info(f"{event.name}: {event_start} to {event_end}")
+
         # Only draw events within the window
-        if event_end < start_time or event_start > end_time:
+        if event_end < start_time:
+            logging.info(f"{event.name} ends before window ({event_end} < {start_time}), skipping")
+            continue
+        if event_start > end_time:
+            logging.info(f"{event.name} starts after window ({event_start} > {end_time}), skipping")
             continue
 
         # Clamp event start/end to window
