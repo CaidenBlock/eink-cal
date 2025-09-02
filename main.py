@@ -28,7 +28,12 @@ def updateCal(calendar_keys):
             calendars.extend(cals)
         except NotImplementedError:
             calendars.append(Calendar(response.text))
-    return calendars
+    # Return the single calendar for single key, no merging
+    if len(calendars) == 1:
+        return calendars[0]
+    else:
+        # If multiple, return the list (but since you're using single keys, this won't trigger)
+        return calendars
 
 def process_upcoming_events(events, event_amt=5):
     now = datetime.datetime.now(ZoneInfo("America/Chicago"))
@@ -149,7 +154,7 @@ try:
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
     calendar1_events = updateCal(["calendar1"])
-    process_upcoming_events(list(calendar1_events[0].events), event_amt=5)
+    process_upcoming_events(list(calendar1_events.events), event_amt=5)
     calendar2_real = updateCal(["calendar2"])
     draw_day_blocks(calendar2_real, drawblack, font18, epd.width, epd.height)
 
