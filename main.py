@@ -51,7 +51,7 @@ def process_upcoming_events(events, event_amt=5):
                 name = name[:21] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font18, fill=0)
 
-def draw_day_blocks(events, image, font, epd_width, epd_height):
+def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     tz = ZoneInfo("America/Chicago")
     now = datetime.datetime.now(tz)
     start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
@@ -69,16 +69,20 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
 
-    # Use Timeline to expand all events in the window
-    timeline = Timeline(events)
+    timeline = Timeline(calendar)
     for occ in timeline.start_after(start_time):
         event_start = occ.begin.astimezone(tz)
+        event_end = occ.end.astimezone(tz)
+
+        logging.info(f"Event '{occ.name}': {event_start} to {event_end}")
 
         # Only draw events within the window
-        if event_start < start_time:
+        if event_end < start_time:
+            logging.info(f"Skipping '{occ.name}': ends before window ({event_end} < {start_time})")
             continue
-
-        event_end = occ.end.astimezone(tz)
+        if event_start > end_time:
+            logging.info(f"Skipping '{occ.name}': starts after window ({event_start} > {end_time})")
+            continue
 
         # Clamp event start/end to window
         block_start = max(event_start, start_time)
@@ -89,6 +93,8 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
         end_offset = (block_end - start_time).total_seconds() / 60
         y1 = int(top + start_offset * pixels_per_minute)
         y2 = int(top + end_offset * pixels_per_minute)
+
+        logging.info(f"Drawing '{occ.name}' from y={y1} to y={y2}")
 
         # Draw rectangle for the event
         image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
