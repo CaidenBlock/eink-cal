@@ -107,6 +107,11 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         time_str = block_start.strftime('%H:%M')
         image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
+        if hasattr(occ.event, 'recurrence_rules') and occ.event.recurrence_rules:
+            logging.info(f"Occurrence from recurring event: '{occ.name}' with rules: {occ.event.recurrence_rules}")
+        else:
+            logging.info(f"Occurrence from non-recurring event: '{occ.name}'")
+
     logging.info(f"Total occurrences processed: {count}")
 
 # Merge multiple Calendar objects into one
