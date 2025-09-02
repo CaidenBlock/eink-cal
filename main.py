@@ -53,7 +53,7 @@ def process_upcoming_events(events, event_amt=5):
             name = event.name
             if len(name) > 21:
                 name = name[:21] + "..."
-            drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
+            drawblack.text((10, y), f"{start_str} - {name}", font=font18, fill=0)
 
 def draw_day_blocks(events, image, font, epd_width, epd_height):
     # Time window: 5AM today to 3AM tomorrow (22 hours)
@@ -75,6 +75,7 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
     pixels_per_minute = vertical_pixels / time_window_minutes
 
     for event in events:
+        print(event.name)
         event_start = event.begin.datetime.astimezone(tz)
         event_end = event.end.datetime.astimezone(tz)
 
