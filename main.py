@@ -76,8 +76,18 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
 
     for event in events:
         print(event.name)
-        event_start = event.begin.datetime.astimezone(tz)
-        event_end = event.end.datetime.astimezone(tz)
+        event_start = event.begin.datetime
+        event_end = event.end.datetime
+
+        # Ensure timezone-aware (assume UTC if naive)
+        if event_start.tzinfo is None:
+            event_start = event_start.replace(tzinfo=datetime.timezone.utc)
+        if event_end.tzinfo is None:
+            event_end = event_end.replace(tzinfo=datetime.timezone.utc)
+
+        # Convert to Central Time
+        event_start = event_start.astimezone(tz)
+        event_end = event_end.astimezone(tz)
 
         # Only draw events within the window
         if event_end < start_time or event_start > end_time:
