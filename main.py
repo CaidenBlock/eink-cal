@@ -53,11 +53,13 @@ try:
     response = requests.get(ics_url)
     calendar = Calendar(response.text)
     x = 5  # Number of upcoming events you want
-    now = datetime.datetime.now(ZoneInfo("America/Chicago"))
     upcoming_events = []
 
+    now = datetime.datetime.now(ZoneInfo("America/Chicago"))
+    today = now.date()
     for event in sorted(calendar.events, key=lambda e: e.begin):
-        if event.begin.datetime > now:
+        event_date = event.begin.datetime.astimezone(ZoneInfo("America/Chicago")).date()
+        if event.begin.datetime > now or event_date == today:
             upcoming_events.append(event)
             print(f" - {event.name} at {event.begin.datetime}")
         if len(upcoming_events) >= x:
@@ -69,7 +71,7 @@ try:
             # Format start date and time as YYYY-MM-DD @ HH:MM
             start_dt = event.begin.datetime.astimezone(ZoneInfo("America/Chicago"))
             start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
-            drawblack.text((10, y), f"{start_str} - {event.name}", font=font24, fill=0)
+            drawblack.text((10, y), f"{start_str} - {event.name[:24]}", font=font24, fill=0)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
