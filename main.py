@@ -81,6 +81,15 @@ try:
     logging.info("Goto Sleep...")
     epd.sleep()
         
+    time.sleep(30)
+
+    logging.info("Wake up...")
+    epd.init()
+    drawblack.line((0, 300, epd.width, 300), fill = 0, width=3)
+    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
+    epd.sleep()
+
+
 except IOError as e:
     logging.info(e)
     
