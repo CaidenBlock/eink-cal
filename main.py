@@ -23,8 +23,15 @@ def updateCal(calendar_keys):
         if ics_url.startswith("webcal://"):
             ics_url = ics_url.replace("webcal://", "https://", 1)
         response = requests.get(ics_url)
-        calendar = Calendar(response.text)
-        all_events.extend(calendar.events)
+        # Try parsing multiple calendars
+        try:
+            calendars = Calendar.parse_multiple(response.text)
+            for cal in calendars:
+                all_events.extend(cal.events)
+        except NotImplementedError:
+            # Fallback to single calendar
+            calendar = Calendar(response.text)
+            all_events.extend(calendar.events)
     return all_events
 
 def process_upcoming_events(events, event_amt=5):
