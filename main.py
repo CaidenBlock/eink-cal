@@ -120,10 +120,10 @@ def merge_calendars(calendar_list):
     merged = Calendar()
     for cal in calendar_list:
         for event in cal.events:
-            merged.events.add(event)
-            logging.info(f"Added event '{event.name}' to merged calendar")
-            if hasattr(event, 'recurrence_rules') and event.recurrence_rules:
-                logging.info(f"Event '{event.name}' has recurrence rules: {event.recurrence_rules}")
+            merged.events.append(event)  # Changed from add to append for list
+            logging.info(f"Added event '{event.summary}' to merged calendar")  # Changed from name to summary
+            if hasattr(event, 'rrule') and event.rrule:  # Changed from recurrence_rules to rrule
+                logging.info(f"Event '{event.summary}' has recurrence rules: {event.rrule}")  # Changed from name to summary
     return merged
 
 with open("secrets.json") as f:
