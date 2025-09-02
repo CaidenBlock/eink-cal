@@ -143,6 +143,18 @@ try:
     calendar1_events = updateCal(["calendar1"])
     calendar2_3_merged_events = updateCal(["calendar2", "calendar3"])
 
+    # Add dummy event
+    from ics import Event
+    tz = ZoneInfo("America/Chicago")
+    now = datetime.datetime.now(tz)
+    dummy_start = now.replace(hour=9, minute=0, second=0, microsecond=0)
+    dummy_end = now.replace(hour=11, minute=0, second=0, microsecond=0)
+    dummy_event = Event()
+    dummy_event.name = "Dummy Event"
+    dummy_event.begin = dummy_start
+    dummy_event.end = dummy_end
+    calendar2_3_merged_events.append(dummy_event)
+
     # Draw calendar 1 events (up to 5)
     process_upcoming_events(calendar1_events, event_amt=5)
 
