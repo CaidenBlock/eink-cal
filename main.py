@@ -71,9 +71,10 @@ try:
     if upcoming_events:
         for i, event in enumerate(upcoming_events[:5]):
             y = 75 + i * 30
-            # Format time as HH:MM or your preferred format
-            event_time = event.begin.datetime.astimezone(ZoneInfo("America/Chicago")).strftime('%H:%M')
-            drawblack.text((10, y), f"{event.name} @ {event_time}", font=font24, fill=0)
+            # Format start date and time as YYYY-MM-DD @ HH:MM
+            start_dt = event.begin.datetime.astimezone(ZoneInfo("America/Chicago"))
+            start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
+            drawblack.text((10, y), f"{start_str} - {event.name}", font=font24, fill=0)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
