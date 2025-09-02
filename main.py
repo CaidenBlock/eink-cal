@@ -56,7 +56,7 @@ try:
     ics_url = secrets["calendar1"]
     response = requests.get(ics_url)
     calendar = Calendar(response.text)
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.timezone.utc)
     next_event = None
 
     for event in sorted(calendar.events, key=lambda e: e.begin):
