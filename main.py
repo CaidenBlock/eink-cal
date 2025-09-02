@@ -76,8 +76,8 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     logging.info(f"Calendar has {len(calendar.events)} events")
     for event in calendar.events:
         logging.info(f"Event: '{event.name}' - {event.begin} to {event.end}")
-        if hasattr(event, 'recurrence_rules') and event.recurrence_rules:
-            logging.info(f"Recurring event: '{event.name}' with rules: {event.recurrence_rules}")
+        if hasattr(event, 'rrule') and event.rrule:
+            logging.info(f"Recurring event: '{event.name}' with rules: {event.rrule}")
 
     timeline = Timeline(calendar)
     count = 0
@@ -109,8 +109,8 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         time_str = block_start.strftime('%H:%M')
         image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
-        if hasattr(occ.event, 'recurrence_rules') and occ.event.recurrence_rules:
-            logging.info(f"Occurrence from recurring event: '{occ.name}' with rules: {occ.event.recurrence_rules}")
+        if hasattr(occ.event, 'rrule') and occ.event.rrule:
+            logging.info(f"Occurrence from recurring event: '{occ.name}' with rules: {occ.event.rrule}")
         else:
             logging.info(f"Occurrence from non-recurring event: '{occ.name}'")
 
