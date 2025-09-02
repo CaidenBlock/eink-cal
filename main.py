@@ -76,17 +76,14 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
 
     # Use Timeline to expand all events in the window
     timeline = Timeline(events)
-    for occ in timeline.start_after(start_time, inclusive=True):
+    for occ in timeline.start_after(start_time):
         event_start = occ.begin.astimezone(tz)
-        event_end = occ.end.astimezone(tz)
 
         # Only draw events within the window
-        if event_end < start_time:
-            logging.info(f"{occ.name} ends before window ({event_end} < {start_time}), skipping")
+        if event_start < start_time:
             continue
-        if event_start > end_time:
-            logging.info(f"{occ.name} starts after window ({event_start} > {end_time}), skipping")
-            continue
+
+        event_end = occ.end.astimezone(tz)
 
         # Clamp event start/end to window
         block_start = max(event_start, start_time)
