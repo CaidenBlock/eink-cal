@@ -94,17 +94,17 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
         y2 = int(top + end_offset * pixels_per_minute)
 
         # Draw rectangle for the event
-        image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
+        drawblack.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
 
         # Draw event name (trimmed)
         name = event.name
         if len(name) > 18:
             name = name[:18] + "..."
-        image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
+        drawblack.text((block_left + 5, y1 + 2), name, font=font, fill=255)
 
         # Draw start time at bottom of block
         time_str = block_start.strftime('%H:%M')
-        image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
+        drawblack.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
 
 
