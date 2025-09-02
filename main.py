@@ -17,23 +17,18 @@ import json
 from ics.timeline import Timeline
 
 def updateCal(calendar_keys):
-    all_events = []
+    calendars = []
     for key in calendar_keys:
         ics_url = secrets[key]
-        # Support webcal:// URLs
         if ics_url.startswith("webcal://"):
             ics_url = ics_url.replace("webcal://", "https://", 1)
         response = requests.get(ics_url)
-        # Try parsing multiple calendars
         try:
-            calendars = Calendar.parse_multiple(response.text)
-            for cal in calendars:
-                all_events.extend(cal.events)
+            cals = Calendar.parse_multiple(response.text)
+            calendars.extend(cals)
         except NotImplementedError:
-            # Fallback to single calendar
-            calendar = Calendar(response.text)
-            all_events.extend(calendar.events)
-    return all_events
+            calendars.append(Calendar(response.text))
+    return calendars
 
 def process_upcoming_events(events, event_amt=5):
     now = datetime.datetime.now(ZoneInfo("America/Chicago"))
@@ -108,6 +103,13 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
         time_str = block_start.strftime('%H:%M')
         image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
+# Merge multiple Calendar objects into one
+def merge_calendars(calendar_list):
+    merged = Calendar()
+    for cal in calendar_list:
+        for event in cal.events:
+            merged.events.add(event)
+    return merged
 
 with open("secrets.json") as f:
     secrets = json.load(f)
@@ -142,7 +144,7 @@ try:
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
     calendar1_events = updateCal(["calendar1"])
-    calendar2_3_merged_events = updateCal(["calendar2", "calendar3"])
+    calendars = updateCal(["calendar2", "calendar3"])
 
     # Add dummy event
     from ics import Event
@@ -154,13 +156,14 @@ try:
     dummy_event.name = "Dummy Event"
     dummy_event.begin = dummy_start
     dummy_event.end = dummy_end
-    calendar2_3_merged_events.append(dummy_event)
+    calendars.append(dummy_event)
 
     # Draw calendar 1 events (up to 5)
     process_upcoming_events(calendar1_events, event_amt=5)
 
     # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
-    draw_day_blocks(calendar2_3_merged_events, drawblack, font18, epd.width, epd.height)
+    merged_calendar = merge_calendars(calendars)
+    draw_day_blocks(merged_calendar, drawblack, font18, epd.width, epd.height)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
