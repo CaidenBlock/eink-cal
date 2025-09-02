@@ -71,7 +71,10 @@ try:
             # Format start date and time as YYYY-MM-DD @ HH:MM
             start_dt = event.begin.datetime.astimezone(ZoneInfo("America/Chicago"))
             start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
-            drawblack.text((10, y), f"{start_str} - {event.name[:24]}", font=font24, fill=0)
+            name = event.name
+            if len(name) > 24:
+                name = name[:24] + "..."
+            drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
