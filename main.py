@@ -68,11 +68,11 @@ try:
         if len(upcoming_events) >= x:
             break
 
-    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
-    time.sleep(2)
-
     if upcoming_events:
         drawblack.text((10, 75), upcoming_events[0].name, font = font24, fill = 0)
+        
+    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
+    time.sleep(2)
     logging.info("Goto Sleep...")
     epd.sleep()
         
