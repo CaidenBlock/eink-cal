@@ -15,6 +15,37 @@ from PIL import Image,ImageDraw,ImageFont
 import traceback
 import json
 
+def updateCal():
+    date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+    drawred.text((10, 10), date_str, font = font32, fill = 0)
+    ics_url = secrets["calendar1"]
+    response = requests.get(ics_url)
+    calendar = Calendar(response.text)
+    event_amt = 5  # Number of upcoming events you want
+    upcoming_events = []
+
+    now = datetime.datetime.now(ZoneInfo("America/Chicago"))
+    today = now.date()
+    for event in sorted(calendar.events, key=lambda e: e.begin):
+        event_date = event.begin.datetime.astimezone(ZoneInfo("America/Chicago")).date()
+        if event.begin.datetime > now or event_date == today:
+            upcoming_events.append(event)
+            print(f" - {event.name} at {event.begin.datetime}")
+        if len(upcoming_events) >= event_amt:
+            break
+
+    if upcoming_events:
+        for i, event in enumerate(upcoming_events[:5]):
+            y = 75 + i * 30
+            # Format start date and time as YYYY-MM-DD @ HH:MM
+            start_dt = event.begin.datetime.astimezone(ZoneInfo("America/Chicago"))
+            start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
+            name = event.name
+            if len(name) > 24:
+                name = name[:24] + "..."
+            drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
+
+
 with open("secrets.json") as f:
     secrets = json.load(f)
 
@@ -43,45 +74,14 @@ try:
     HRimage = Image.new('1', (epd.width, epd.height), 255)
     drawblack = ImageDraw.Draw(HBlackimage)
     drawred = ImageDraw.Draw(HRimage)
-
-    date_str = datetime.datetime.now().strftime('%Y-%m-%d')
-
-    drawred.text((10, 10), date_str, font = font32, fill = 0)
     drawblack.line((0, 60, epd.width, 60), fill = 0, width=3)
- 
-    ics_url = secrets["calendar1"]
-    response = requests.get(ics_url)
-    calendar = Calendar(response.text)
-    x = 5  # Number of upcoming events you want
-    upcoming_events = []
 
-    now = datetime.datetime.now(ZoneInfo("America/Chicago"))
-    today = now.date()
-    for event in sorted(calendar.events, key=lambda e: e.begin):
-        event_date = event.begin.datetime.astimezone(ZoneInfo("America/Chicago")).date()
-        if event.begin.datetime > now or event_date == today:
-            upcoming_events.append(event)
-            print(f" - {event.name} at {event.begin.datetime}")
-        if len(upcoming_events) >= x:
-            break
-
-    if upcoming_events:
-        for i, event in enumerate(upcoming_events[:5]):
-            y = 75 + i * 30
-            # Format start date and time as YYYY-MM-DD @ HH:MM
-            start_dt = event.begin.datetime.astimezone(ZoneInfo("America/Chicago"))
-            start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
-            name = event.name
-            if len(name) > 24:
-                name = name[:24] + "..."
-            drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
+    updateCal()
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
     logging.info("Goto Sleep...")
     epd.sleep()
-        
-    time.sleep(30)
 
     logging.info("Wake up...")
     epd.init()
