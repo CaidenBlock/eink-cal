@@ -9,7 +9,7 @@ import datetime
 picdir = './pic'
 fontdir = './font'
 import logging
-from waveshare_epD import epd7in5bc
+from waveshare_epd import epd7in5bc
 import time
 from PIL import Image,ImageDraw,ImageFont
 import traceback
@@ -145,13 +145,6 @@ try:
     time.sleep(2)
     logging.info("Goto Sleep...")
     epd.sleep()
-
-    logging.info("Wake up...")
-    epd.init()
-    drawblack.line((0, 300, epd.width, 300), fill = 0, width=3)
-    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
-    epd.sleep()
-
 
 except IOError as e:
     logging.info(e)
