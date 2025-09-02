@@ -5,6 +5,7 @@ import os
 import requests
 from zoneinfo import ZoneInfo
 from ics import Calendar
+from ics.timeline import Timeline
 import datetime
 picdir = './pic'
 fontdir = './font'
@@ -67,14 +68,29 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
 
+    # Create a temporary calendar to use with Timeline
+    temp_calendar = Calendar()
     for event in events:
-        event_start = event.begin.datetime.astimezone(tz)
-        event_end = event.end.datetime.astimezone(tz)
-
-        # Only draw events within the window
-        if event_end < start_time or event_start > end_time:
+        temp_calendar.events.add(event)
+    
+    # Use Timeline to expand recurring events
+    timeline = Timeline(temp_calendar)
+    count = 0
+    
+    # Process all occurrences (including expanded recurring events)
+    for occ in timeline:
+        # Skip events outside our window
+        if occ.begin < start_time:
             continue
-
+        if occ.begin > end_time:
+            break  # Timeline sorts by begin time, so we can break early
+            
+        count += 1
+        event_start = occ.begin.datetime.astimezone(tz)
+        event_end = occ.end.datetime.astimezone(tz)
+        
+        logging.info(f"Occurrence {count}: '{occ.name}' - {event_start} to {event_end}")
+        
         # Clamp event start/end to window
         block_start = max(event_start, start_time)
         block_end = min(event_end, end_time)
@@ -89,7 +105,7 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
         image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
 
         # Draw event name (trimmed)
-        name = event.name
+        name = occ.name
         if len(name) > 18:
             name = name[:18] + "..."
         image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
@@ -97,6 +113,8 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
         # Draw start time at bottom of block
         time_str = block_start.strftime('%H:%M')
         image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
+    
+    logging.info(f"Total occurrences processed: {count}")
 
 
 
