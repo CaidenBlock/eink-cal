@@ -48,7 +48,7 @@ try:
     # drawry.arc((140, 50, 190, 100), 0, 360, fill = 0)
     # drawry.rectangle((80, 50, 130, 100), fill = 0)
     # drawry.chord((200, 50, 250, 100), 0, 360, fill = 0)
-    # epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
+    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
     time.sleep(2)
     
 
