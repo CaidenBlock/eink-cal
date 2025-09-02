@@ -4,7 +4,8 @@ import sys
 import os
 import requests
 from zoneinfo import ZoneInfo
-from ical.calendar import Calendar
+from ics import Calendar
+from ics.timeline import Timeline
 import datetime
 picdir = './pic'
 fontdir = './font'
@@ -23,61 +24,24 @@ def updateCal(calendar_keys):
         if ics_url.startswith("webcal://"):
             ics_url = ics_url.replace("webcal://", "https://", 1)
         response = requests.get(ics_url)
-        logging.info(f"Response status for {key}: {response.status_code}")
-        logging.info(f"Response text length for {key}: {len(response.text)}")
-        
-        # Check if it's a valid calendar format
-        if not response.text.strip():
-            logging.error(f"Empty response for {key}")
-            continue
-        if "BEGIN:VCALENDAR" not in response.text:
-            logging.error(f"Invalid ICS format for {key}: Missing BEGIN:VCALENDAR")
-            continue
-            
         try:
-            # For ical library, use Calendar.from_ical() to parse
-            cal = Calendar.from_ical(response.text)
+            cal = Calendar(response.text)  # ics library parsing is simple
             calendars.append(cal)
             logging.info(f"Successfully parsed {key} calendar")
         except Exception as e:
-            logging.error(f"Error parsing calendar for {key}: {type(e).__name__}: {e}")
-            logging.info(f"First 100 chars of response for {key}: {response.text[:100]}...")
-            
-            # Try a simpler parsing approach as fallback
-            try:
-                # Create an empty calendar
-                cal = Calendar()
-                # Add each event from the ICS string (simplified approach)
-                for line in response.text.splitlines():
-                    if line.startswith("BEGIN:VEVENT"):
-                        event = {}
-                    elif line.startswith("END:VEVENT"):
-                        # Create event and add to calendar
-                        cal.events.append(event)
-                    elif ":" in line and event is not None:
-                        key, value = line.split(":", 1)
-                        event[key] = value
-                calendars.append(cal)
-                logging.info(f"Parsed {key} calendar using fallback method")
-            except Exception as e2:
-                logging.error(f"Fallback parsing failed for {key}: {type(e2).__name__}: {e2}")
-                # Skip this calendar
-                continue
-            
+            logging.error(f"Error parsing calendar for {key}: {e}")
+            continue
+    
     # Return the single calendar for single key
     if len(calendars) == 1:
         return calendars[0]
-    elif len(calendars) > 1:
-        # Merge if multiple (combine events)
+    else:
+        # Merge if multiple
         merged = Calendar()
         for cal in calendars:
-            merged.events.extend(cal.events)
+            for event in cal.events:
+                merged.events.add(event)  # In ics library, events is a set
         return merged
-    else:
-        # No calendars parsed successfully
-        logging.error("No calendars were successfully parsed")
-        # Return empty calendar to avoid errors
-        return Calendar()
 
 def process_upcoming_events(events, event_amt=5):
     now = datetime.datetime.now(ZoneInfo("America/Chicago"))
@@ -124,65 +88,39 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
             logging.info(f"Recurring event: '{event.summary}' with rules: {event.rrule}")
 
     count = 0
-    for event in calendar.events:
-        if hasattr(event, 'rrule') and event.rrule:
-            # Expand recurring event
-            rule = rrulestr(event.rrule)
-            duration = event.dtend - event.dtstart
-            for dt in rule.between(start_time, end_time, inc=True):
-                count += 1
-                event_start = dt.replace(tzinfo=tz) if dt.tzinfo is None else dt.astimezone(tz)
-                event_end = event_start + duration
+    # This will work with the ics library
+    timeline = Timeline(calendar)
+    for occ in timeline:
+        if occ.begin > end_time:
+            break
+        if occ.begin < start_time:
+            continue
+        
+        # Process each occurrence
+        event_start = occ.begin.astimezone(tz)
+        event_end = occ.end.astimezone(tz)
 
-                logging.info(f"Occurrence {count}: '{event.summary}' - {event_start} to {event_end}")
+        count += 1
+        logging.info(f"Occurrence {count}: '{occ.name}' - {event_start} to {event_end}")
 
-                block_start = max(event_start, start_time)
-                block_end = min(event_end, end_time)
-                start_offset = (block_start - start_time).total_seconds() / 60
-                end_offset = (block_end - start_time).total_seconds() / 60
-                y1 = int(top + start_offset * pixels_per_minute)
-                y2 = int(top + end_offset * pixels_per_minute)
+        block_start = max(event_start, start_time)
+        block_end = min(event_end, end_time)
+        start_offset = (block_start - start_time).total_seconds() / 60
+        end_offset = (block_end - start_time).total_seconds() / 60
+        y1 = int(top + start_offset * pixels_per_minute)
+        y2 = int(top + end_offset * pixels_per_minute)
 
-                logging.info(f"Drawing '{event.summary}' from y={y1} to y={y2}")
+        logging.info(f"Drawing '{occ.name}' from y={y1} to y={y2}")
 
-                image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
-                name = event.summary
-                if len(name) > 18:
-                    name = name[:18] + "..."
-                image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
-                time_str = block_start.strftime('%H:%M')
-                image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
+        image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
+        name = occ.name
+        if len(name) > 18:
+            name = name[:18] + "..."
+        image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
+        time_str = block_start.strftime('%H:%M')
+        image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
-                logging.info(f"Occurrence from recurring event: '{event.summary}' with rules: {event.rrule}")
-        else:
-            # Single event
-            event_start = event.dtstart.astimezone(tz)
-            event_end = event.dtend.astimezone(tz)
-
-            if event_end < start_time or event_start > end_time:
-                continue
-
-            count += 1
-            logging.info(f"Occurrence {count}: '{event.summary}' - {event_start} to {event_end}")
-
-            block_start = max(event_start, start_time)
-            block_end = min(event_end, end_time)
-            start_offset = (block_start - start_time).total_seconds() / 60
-            end_offset = (block_end - start_time).total_seconds() / 60
-            y1 = int(top + start_offset * pixels_per_minute)
-            y2 = int(top + end_offset * pixels_per_minute)
-
-            logging.info(f"Drawing '{event.summary}' from y={y1} to y={y2}")
-
-            image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
-            name = event.summary
-            if len(name) > 18:
-                name = name[:18] + "..."
-            image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
-            time_str = block_start.strftime('%H:%M')
-            image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
-
-            logging.info(f"Occurrence from non-recurring event: '{event.summary}'")
+        logging.info(f"Occurrence from non-recurring event: '{occ.name}'")
 
     logging.info(f"Total occurrences processed: {count}")
 
