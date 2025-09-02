@@ -81,9 +81,11 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
 
     timeline = Timeline(calendar)
     count = 0
-    for occ in timeline.start_after(start_time):
+    for occ in timeline:  # Iterate over all occurrences
         if occ.begin > end_time:
-            break
+            break  # Stop if past the end time
+        if occ.begin < start_time:
+            continue  # Skip if before the start time
         count += 1
         event_start = occ.begin.astimezone(tz)
         event_end = occ.end.astimezone(tz)
