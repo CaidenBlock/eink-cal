@@ -23,20 +23,50 @@ def updateCal(calendar_keys):
         if ics_url.startswith("webcal://"):
             ics_url = ics_url.replace("webcal://", "https://", 1)
         response = requests.get(ics_url)
+        logging.info(f"Response status for {key}: {response.status_code}")
+        logging.info(f"Response text length for {key}: {len(response.text)}")
+        
+        # Check if it's a valid calendar format
+        if not response.text.strip():
+            logging.error(f"Empty response for {key}")
+            continue
+        if "BEGIN:VCALENDAR" not in response.text:
+            logging.error(f"Invalid ICS format for {key}: Missing BEGIN:VCALENDAR")
+            continue
+            
         try:
-            cal = Calendar.from_ical(response.text)
-            calendars.append(cal)
+            # Try different parsing methods
+            try:
+                # Method 1: Using direct parsing
+                cal = Calendar.parse(response.text)
+                calendars.append(cal)
+                logging.info(f"Successfully parsed {key} calendar using parse()")
+            except (AttributeError, TypeError) as e:
+                # Method 2: Using Calendar constructor
+                cal = Calendar()
+                cal.parse(response.text)
+                calendars.append(cal)
+                logging.info(f"Successfully parsed {key} calendar using parse method")
         except Exception as e:
-            logging.error(f"Error parsing calendar for {key}: {e}")
+            logging.error(f"Error parsing calendar for {key}: {type(e).__name__}: {e}")
+            logging.info(f"First 100 chars of response for {key}: {response.text[:100]}...")
+            # Skip this calendar
+            continue
+            
     # Return the single calendar for single key
     if len(calendars) == 1:
         return calendars[0]
-    else:
+    elif len(calendars) > 1:
         # Merge if multiple (combine events)
         merged = Calendar()
         for cal in calendars:
             merged.events.extend(cal.events)
         return merged
+    else:
+        # No calendars parsed successfully
+        logging.error("No calendars were successfully parsed")
+        # Return empty calendar to avoid errors
+        return Calendar()
 
 def process_upcoming_events(events, event_amt=5):
     now = datetime.datetime.now(ZoneInfo("America/Chicago"))
