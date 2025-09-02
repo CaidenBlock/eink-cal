@@ -150,9 +150,8 @@ try:
 
     calendar1_events = updateCal(["calendar1"])
     process_upcoming_events(list(calendar1_events[0].events), event_amt=5)
-    calendars = updateCal(["calendar2", "calendar3"])
-    merged_calendar = merge_calendars(calendars)
-    draw_day_blocks(merged_calendar, drawblack, font18, epd.width, epd.height)
+    calendar2_real = updateCal(["calendar2"])
+    draw_day_blocks(calendar2_real, drawblack, font18, epd.width, epd.height)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
