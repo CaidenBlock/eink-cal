@@ -151,14 +151,6 @@ try:
     from ics import Event
     tz = ZoneInfo("America/Chicago")
     now = datetime.datetime.now(tz)
-    dummy_start = now.replace(hour=9, minute=0, second=0, microsecond=0)
-    dummy_end = now.replace(hour=11, minute=0, second=0, microsecond=0)
-    dummy_event = Event()
-    dummy_event.name = "Dummy Event"
-    dummy_event.begin = dummy_start
-    dummy_event.end = dummy_end
-    calendars.append(dummy_event)
-
     # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
     merged_calendar = merge_calendars(calendars)
     draw_day_blocks(merged_calendar, drawblack, font18, epd.width, epd.height)
