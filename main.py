@@ -14,6 +14,7 @@ import time
 from PIL import Image,ImageDraw,ImageFont
 import traceback
 import json
+from ics.timeline import Timeline
 
 def updateCal(calendar_keys):
     all_events = []
@@ -56,7 +57,6 @@ def process_upcoming_events(events, event_amt=5):
             drawblack.text((10, y), f"{start_str} - {name}", font=font18, fill=0)
 
 def draw_day_blocks(events, image, font, epd_width, epd_height):
-    # Time window: 5AM today to 3AM tomorrow (22 hours)
     tz = ZoneInfo("America/Chicago")
     now = datetime.datetime.now(tz)
     start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
@@ -65,103 +65,51 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
     end_time = start_time + datetime.timedelta(hours=22)
 
     # Block area: rightmost 200 pixels
-    block_left = epd_width - 200  # 440
-    block_right = epd_width - 1   # 639
+    block_left = epd_width - 200
+    block_right = epd_width - 1
     top = 0
-    bottom = epd_height           # 384
+    bottom = epd_height
 
     time_window_minutes = (end_time - start_time).total_seconds() / 60
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
 
-    for event in events:
-        # Handle repeating events
-        if hasattr(event, "recurrence_rules") and event.recurrence_rules:
-            # Expand occurrences in the window
-            occurrences = event.occurrences_between(start_time, end_time)
-            for occ in occurrences:
-                event_start = occ.start.astimezone(tz)
-                event_end = occ.end.astimezone(tz)
+    # Use Timeline to expand all events in the window
+    timeline = Timeline(events)
+    for occ in timeline.start_after(start_time, inclusive=True):
+        event_start = occ.begin.astimezone(tz)
+        event_end = occ.end.astimezone(tz)
 
-                # Only draw events within the window
-                if event_end < start_time:
-                    logging.info(f"{event.name} ends before window ({event_end} < {start_time}), skipping")
-                    continue
-                if event_start > end_time:
-                    logging.info(f"{event.name} starts after window ({event_start} > {end_time}), skipping")
-                    continue
+        # Only draw events within the window
+        if event_end < start_time:
+            logging.info(f"{occ.name} ends before window ({event_end} < {start_time}), skipping")
+            continue
+        if event_start > end_time:
+            logging.info(f"{occ.name} starts after window ({event_start} > {end_time}), skipping")
+            continue
 
-                # Clamp event start/end to window
-                block_start = max(event_start, start_time)
-                block_end = min(event_end, end_time)
+        # Clamp event start/end to window
+        block_start = max(event_start, start_time)
+        block_end = min(event_end, end_time)
 
-                # Calculate vertical positions
-                start_offset = (block_start - start_time).total_seconds() / 60
-                end_offset = (block_end - start_time).total_seconds() / 60
-                y1 = int(top + start_offset * pixels_per_minute)
-                y2 = int(top + end_offset * pixels_per_minute)
+        # Calculate vertical positions
+        start_offset = (block_start - start_time).total_seconds() / 60
+        end_offset = (block_end - start_time).total_seconds() / 60
+        y1 = int(top + start_offset * pixels_per_minute)
+        y2 = int(top + end_offset * pixels_per_minute)
 
-                # Draw rectangle for the event
-                drawblack.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
+        # Draw rectangle for the event
+        image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
 
-                # Draw event name (trimmed)
-                name = event.name
-                if len(name) > 18:
-                    name = name[:18] + "..."
-                drawblack.text((block_left + 5, y1 + 2), name, font=font, fill=255)
+        # Draw event name (trimmed)
+        name = occ.name
+        if len(name) > 18:
+            name = name[:18] + "..."
+        image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
 
-                # Draw start time at bottom of block
-                time_str = block_start.strftime('%H:%M')
-                drawblack.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
-        else:
-            event_start = event.begin.datetime
-            event_end = event.end.datetime
-
-            # Ensure timezone-aware (assume UTC if naive)
-            if event_start.tzinfo is None:
-                logging.info(f"{event.name}: event_start naive, assuming UTC")
-                event_start = event_start.replace(tzinfo=datetime.timezone.utc)
-            if event_end.tzinfo is None:
-                logging.info(f"{event.name}: event_end naive, assuming UTC")
-                event_end = event_end.replace(tzinfo=datetime.timezone.utc)
-
-            # Convert to Central Time
-            event_start = event_start.astimezone(tz)
-            event_end = event_end.astimezone(tz)
-
-            logging.info(f"{event.name}: {event_start} to {event_end}")
-
-            # Only draw events within the window
-            if event_end < start_time:
-                logging.info(f"{event.name} ends before window ({event_end} < {start_time}), skipping")
-                continue
-            if event_start > end_time:
-                logging.info(f"{event.name} starts after window ({event_start} > {end_time}), skipping")
-                continue
-
-            # Clamp event start/end to window
-            block_start = max(event_start, start_time)
-            block_end = min(event_end, end_time)
-
-            # Calculate vertical positions
-            start_offset = (block_start - start_time).total_seconds() / 60
-            end_offset = (block_end - start_time).total_seconds() / 60
-            y1 = int(top + start_offset * pixels_per_minute)
-            y2 = int(top + end_offset * pixels_per_minute)
-
-            # Draw rectangle for the event
-            drawblack.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
-
-            # Draw event name (trimmed)
-            name = event.name
-            if len(name) > 18:
-                name = name[:18] + "..."
-            drawblack.text((block_left + 5, y1 + 2), name, font=font, fill=255)
-
-            # Draw start time at bottom of block
-            time_str = block_start.strftime('%H:%M')
-            drawblack.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
-
+        # Draw start time at bottom of block
+        time_str = block_start.strftime('%H:%M')
+        image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
 
 with open("secrets.json") as f:
