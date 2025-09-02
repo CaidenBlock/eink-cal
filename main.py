@@ -69,8 +69,12 @@ try:
             break
 
     if upcoming_events:
-        drawblack.text((10, 75), upcoming_events[0].name, font = font24, fill = 0)
-        
+        for i, event in enumerate(upcoming_events[:5]):
+            y = 75 + i * 30
+            # Format time as HH:MM or your preferred format
+            event_time = event.begin.datetime.astimezone(ZoneInfo("America/Chicago")).strftime('%H:%M')
+            drawblack.text((10, y), f"{event.name} @ {event_time}", font=font24, fill=0)
+
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
     logging.info("Goto Sleep...")
