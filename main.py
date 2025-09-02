@@ -3,6 +3,7 @@
 import sys
 import os
 import requests
+from zoneinfo import ZoneInfo
 from ics import Calendar
 import datetime
 picdir = './pic'
@@ -56,11 +57,8 @@ try:
     ics_url = secrets["calendar1"]
     response = requests.get(ics_url)
     calendar = Calendar(response.text)
-    now = datetime.datetime.now(datetime.timezone.utc)
-    next_event = None
-
     x = 5  # Number of upcoming events you want
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(ZoneInfo("America/Chicago"))
     upcoming_events = []
 
     for event in sorted(calendar.events, key=lambda e: e.begin):
