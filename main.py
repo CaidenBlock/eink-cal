@@ -35,23 +35,34 @@ def updateCal(calendar_keys):
             continue
             
         try:
-            # Try different parsing methods
-            try:
-                # Method 1: Using direct parsing
-                cal = Calendar.parse(response.text)
-                calendars.append(cal)
-                logging.info(f"Successfully parsed {key} calendar using parse()")
-            except (AttributeError, TypeError) as e:
-                # Method 2: Using Calendar constructor
-                cal = Calendar()
-                cal.parse(response.text)
-                calendars.append(cal)
-                logging.info(f"Successfully parsed {key} calendar using parse method")
+            # For ical library, use Calendar.from_ical() to parse
+            cal = Calendar.from_ical(response.text)
+            calendars.append(cal)
+            logging.info(f"Successfully parsed {key} calendar")
         except Exception as e:
             logging.error(f"Error parsing calendar for {key}: {type(e).__name__}: {e}")
             logging.info(f"First 100 chars of response for {key}: {response.text[:100]}...")
-            # Skip this calendar
-            continue
+            
+            # Try a simpler parsing approach as fallback
+            try:
+                # Create an empty calendar
+                cal = Calendar()
+                # Add each event from the ICS string (simplified approach)
+                for line in response.text.splitlines():
+                    if line.startswith("BEGIN:VEVENT"):
+                        event = {}
+                    elif line.startswith("END:VEVENT"):
+                        # Create event and add to calendar
+                        cal.events.append(event)
+                    elif ":" in line and event is not None:
+                        key, value = line.split(":", 1)
+                        event[key] = value
+                calendars.append(cal)
+                logging.info(f"Parsed {key} calendar using fallback method")
+            except Exception as e2:
+                logging.error(f"Fallback parsing failed for {key}: {type(e2).__name__}: {e2}")
+                # Skip this calendar
+                continue
             
     # Return the single calendar for single key
     if len(calendars) == 1:
