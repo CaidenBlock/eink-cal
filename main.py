@@ -73,25 +73,20 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
 
-    logging.info(f"Merged calendar has {len(calendar.events)} events")
+    logging.info(f"Calendar has {len(calendar.events)} events")
     for event in calendar.events:
-        logging.info(f"Event in merged calendar: '{event.name}' - {event.begin} to {event.end}")
+        logging.info(f"Event: '{event.name}' - {event.begin} to {event.end}")
         if hasattr(event, 'recurrence_rules') and event.recurrence_rules:
             logging.info(f"Recurring event: '{event.name}' with rules: {event.recurrence_rules}")
 
     timeline = Timeline(calendar)
-    for occ in timeline.start_after(start_time):
+    count = 0
+    for occ in timeline.between(start_time, end_time):
+        count += 1
         event_start = occ.begin.astimezone(tz)
         event_end = occ.end.astimezone(tz)
 
-        logging.info(f"Timeline event '{occ.name}': {event_start} to {event_end}")
-
-        if event_end < start_time:
-            logging.info(f"Skipping '{occ.name}': ends before window ({event_end} < {start_time})")
-            continue
-        if event_start > end_time:
-            logging.info(f"Skipping '{occ.name}': starts after window ({event_start} > {end_time})")
-            continue
+        logging.info(f"Occurrence {count}: '{occ.name}' - {event_start} to {event_end}")
 
         block_start = max(event_start, start_time)
         block_end = min(event_end, end_time)
@@ -109,6 +104,8 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
         time_str = block_start.strftime('%H:%M')
         image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
+
+    logging.info(f"Total occurrences processed: {count}")
 
 # Merge multiple Calendar objects into one
 def merge_calendars(calendar_list):
