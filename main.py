@@ -2,6 +2,8 @@
 # -*- coding:utf-8 -*-
 import sys
 import os
+import requests
+from ics import Calendar
 import datetime
 picdir = './pic'
 fontdir = './font'
@@ -10,6 +12,10 @@ from waveshare_epd import epd7in5bc
 import time
 from PIL import Image,ImageDraw,ImageFont
 import traceback
+import json
+
+with open("secrets.json") as f:
+    secrets = json.load(f)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -37,7 +43,7 @@ try:
     drawred = ImageDraw.Draw(HRimage)
     date_str = datetime.datetime.now().strftime('%Y-%m-%d')
     drawblack.text((10, 10), date_str, font = font24, fill = 0)
-    drawblack.line((0, 50, 640, 50), fill = 0, width=3)
+    drawblack.line((0, 50, epd.width, 50), fill = 0, width=3)
     # drawblack.text((10, 20), '7.5inch e-Paper bc', font = font24, fill = 0)
     # drawblack.text((150, 0), u'微雪电子', font = font24, fill = 0)    
     # drawblack.line((70, 50, 20, 100), fill = 0)
@@ -47,18 +53,26 @@ try:
     # drawry.arc((140, 50, 190, 100), 0, 360, fill = 0)
     # drawry.rectangle((80, 50, 130, 100), fill = 0)
     # drawry.chord((200, 50, 250, 100), 0, 360, fill = 0)
+    ics_url = secrets["calendar1"]
+    response = requests.get(ics_url)
+    calendar = Calendar(response.text)
+    now = datetime.now()
+    next_event = None
+
+    for event in sorted(calendar.events, key=lambda e: e.begin):
+        if event.begin.datetime > now:
+            next_event = event
+        break
+    if next_event:
+        print("Title:", next_event.name)
+        print("Start:", next_event.begin)
+    else:
+        print("No upcoming events found.")
+
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
     
-    #HBlackimage = Image.open(os.path.join(picdir, '7in5b-b.bmp'))
-    #HRimage = Image.open(os.path.join(picdir, '7in5b-r.bmp'))
-    #epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
-    #time.sleep(2)
-    
-    # logging.info("Clear...")
-    # epd.init()
-    # epd.Clear()
-    
+    drawblack.text((10, 75), next_event.name, font = font24, fill = 0)
     logging.info("Goto Sleep...")
     epd.sleep()
         
