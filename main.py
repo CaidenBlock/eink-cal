@@ -51,7 +51,7 @@ def process_upcoming_events(events, event_amt=5):
                 name = name[:21] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font18, fill=0)
 
-def draw_day_blocks(calendar, image, font, epd_width, epd_height):
+def draw_day_blocks(calendars, image, font, epd_width, epd_height):
     tz = ZoneInfo("America/Chicago")
     now = datetime.datetime.now(tz)
     start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
@@ -59,7 +59,6 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         start_time -= datetime.timedelta(days=1)
     end_time = start_time + datetime.timedelta(hours=22)
 
-    # Block area: rightmost 200 pixels
     block_left = epd_width - 200
     block_right = epd_width - 1
     top = 0
@@ -69,14 +68,14 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
 
-    timeline = Timeline(calendar)
+    # Pass the list of Calendar objects to Timeline
+    timeline = Timeline(calendars)
     for occ in timeline.start_after(start_time):
         event_start = occ.begin.astimezone(tz)
         event_end = occ.end.astimezone(tz)
 
         logging.info(f"Event '{occ.name}': {event_start} to {event_end}")
 
-        # Only draw events within the window
         if event_end < start_time:
             logging.info(f"Skipping '{occ.name}': ends before window ({event_end} < {start_time})")
             continue
@@ -84,11 +83,8 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
             logging.info(f"Skipping '{occ.name}': starts after window ({event_start} > {end_time})")
             continue
 
-        # Clamp event start/end to window
         block_start = max(event_start, start_time)
         block_end = min(event_end, end_time)
-
-        # Calculate vertical positions
         start_offset = (block_start - start_time).total_seconds() / 60
         end_offset = (block_end - start_time).total_seconds() / 60
         y1 = int(top + start_offset * pixels_per_minute)
@@ -96,16 +92,11 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
 
         logging.info(f"Drawing '{occ.name}' from y={y1} to y={y2}")
 
-        # Draw rectangle for the event
         image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
-
-        # Draw event name (trimmed)
         name = occ.name
         if len(name) > 18:
             name = name[:18] + "..."
         image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
-
-        # Draw start time at bottom of block
         time_str = block_start.strftime('%H:%M')
         image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
