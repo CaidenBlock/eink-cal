@@ -33,27 +33,22 @@ try:
     logging.info("Drawing")    
     font24 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 24)
     font18 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
+    font32 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 32)
     font72 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 72)
 
 
     # Drawing on the Horizontal image
     logging.info("1.Drawing on the Horizontal image...") 
     HBlackimage = Image.new('1', (epd.width, epd.height), 255)
-    HRimage = Image.new('1', (epd.width, epd.height), 255)  # 298*126  ryimage: red or yellow image  
+    HRimage = Image.new('1', (epd.width, epd.height), 255)
     drawblack = ImageDraw.Draw(HBlackimage)
     drawred = ImageDraw.Draw(HRimage)
+
     date_str = datetime.datetime.now().strftime('%Y-%m-%d')
-    drawblack.text((10, 10), date_str, font = font24, fill = 0)
-    drawblack.line((0, 50, epd.width, 50), fill = 0, width=3)
-    # drawblack.text((10, 20), '7.5inch e-Paper bc', font = font24, fill = 0)
-    # drawblack.text((150, 0), u'微雪电子', font = font24, fill = 0)    
-    # drawblack.line((70, 50, 20, 100), fill = 0)
-    # drawblack.rectangle((20, 50, 70, 100), outline = 0)    
-    # drawry.line((165, 50, 165, 100), fill = 0)
-    # drawry.line((140, 75, 190, 75), fill = 0)
-    # drawry.arc((140, 50, 190, 100), 0, 360, fill = 0)
-    # drawry.rectangle((80, 50, 130, 100), fill = 0)
-    # drawry.chord((200, 50, 250, 100), 0, 360, fill = 0)
+
+    drawred.text((10, 10), date_str, font = font32, fill = 0)
+    drawblack.line((0, 60, epd.width, 60), fill = 0, width=3)
+ 
     ics_url = secrets["calendar1"]
     response = requests.get(ics_url)
     calendar = Calendar(response.text)
