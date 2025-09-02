@@ -27,13 +27,13 @@ try:
     logging.info("init and Clear")
     epd.init()
     epd.Clear()
-    time.sleep(1)
 
     # Drawing on the image
     logging.info("Drawing")    
     font24 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 24)
     font18 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
     font72 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 72)
+
 
     # Drawing on the Horizontal image
     logging.info("1.Drawing on the Horizontal image...") 
@@ -59,20 +59,21 @@ try:
     now = datetime.datetime.now(datetime.timezone.utc)
     next_event = None
 
+    x = 5  # Number of upcoming events you want
+    now = datetime.datetime.now()
+    upcoming_events = []
+
     for event in sorted(calendar.events, key=lambda e: e.begin):
         if event.begin.datetime > now:
-            next_event = event
-        break
-    if next_event:
-        print("Title:", next_event.name)
-        print("Start:", next_event.begin)
-    else:
-        print("No upcoming events found.")
+            upcoming_events.append(event)
+        if len(upcoming_events) >= x:
+            break
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
-    
-    drawblack.text((10, 75), next_event.name, font = font24, fill = 0)
+
+    if upcoming_events:
+        drawblack.text((10, 75), upcoming_events[0].name, font = font24, fill = 0)
     logging.info("Goto Sleep...")
     epd.sleep()
         
