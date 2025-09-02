@@ -4,7 +4,8 @@ import sys
 import os
 import requests
 from zoneinfo import ZoneInfo
-from ics import Calendar
+from ical.calendar import Calendar
+from ical.store import Store
 import datetime
 picdir = './pic'
 fontdir = './font'
@@ -14,7 +15,6 @@ import time
 from PIL import Image,ImageDraw,ImageFont
 import traceback
 import json
-from ics.timeline import Timeline
 
 def updateCal(calendar_keys):
     calendars = []
@@ -24,24 +24,27 @@ def updateCal(calendar_keys):
             ics_url = ics_url.replace("webcal://", "https://", 1)
         response = requests.get(ics_url)
         try:
-            cals = Calendar.parse_multiple(response.text)
-            calendars.extend(cals)
-        except NotImplementedError:
-            calendars.append(Calendar(response.text))
-    # Return the single calendar for single key, no merging
+            cal = Calendar.from_ical(response.text)
+            calendars.append(cal)
+        except Exception as e:
+            logging.error(f"Error parsing calendar for {key}: {e}")
+    # Return the single calendar for single key
     if len(calendars) == 1:
         return calendars[0]
     else:
-        # If multiple, return the list (but since you're using single keys, this won't trigger)
-        return calendars
+        # Merge if multiple (combine events)
+        merged = Calendar()
+        for cal in calendars:
+            merged.events.extend(cal.events)
+        return merged
 
 def process_upcoming_events(events, event_amt=5):
     now = datetime.datetime.now(ZoneInfo("America/Chicago"))
     today = now.date()
     upcoming_events = []
-    for event in sorted(events, key=lambda e: e.begin):
-        event_date = event.begin.datetime.astimezone(ZoneInfo("America/Chicago")).date()
-        if event.begin.datetime > now or event_date == today:
+    for event in sorted(events, key=lambda e: e.dtstart):
+        event_date = event.dtstart.astimezone(ZoneInfo("America/Chicago")).date()
+        if event.dtstart > now or event_date == today:
             upcoming_events.append(event)
         if len(upcoming_events) >= event_amt:
             break
@@ -49,9 +52,9 @@ def process_upcoming_events(events, event_amt=5):
     if upcoming_events:
         for i, event in enumerate(upcoming_events[:event_amt]):
             y = 75 + i * 30
-            start_dt = event.begin.datetime.astimezone(ZoneInfo("America/Chicago"))
+            start_dt = event.dtstart.astimezone(ZoneInfo("America/Chicago"))
             start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
-            name = event.name
+            name = event.summary
             if len(name) > 21:
                 name = name[:21] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font18, fill=0)
@@ -75,22 +78,18 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
 
     logging.info(f"Calendar has {len(calendar.events)} events")
     for event in calendar.events:
-        logging.info(f"Event: '{event.name}' - {event.begin} to {event.end}")
+        logging.info(f"Event: '{event.summary}' - {event.dtstart} to {event.dtend}")
         if hasattr(event, 'rrule') and event.rrule:
-            logging.info(f"Recurring event: '{event.name}' with rules: {event.rrule}")
+            logging.info(f"Recurring event: '{event.summary}' with rules: {event.rrule}")
 
-    timeline = Timeline(calendar)
+    store = Store(calendar)
     count = 0
-    for occ in timeline:  # Iterate over all occurrences
-        if occ.begin > end_time:
-            break  # Stop if past the end time
-        if occ.begin < start_time:
-            continue  # Skip if before the start time
+    for occ in store.expand(start_time, end_time):
         count += 1
-        event_start = occ.begin.astimezone(tz)
-        event_end = occ.end.astimezone(tz)
+        event_start = occ.dtstart.astimezone(tz)
+        event_end = occ.dtend.astimezone(tz)
 
-        logging.info(f"Occurrence {count}: '{occ.name}' - {event_start} to {event_end}")
+        logging.info(f"Occurrence {count}: '{occ.summary}' - {event_start} to {event_end}")
 
         block_start = max(event_start, start_time)
         block_end = min(event_end, end_time)
@@ -99,20 +98,20 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         y1 = int(top + start_offset * pixels_per_minute)
         y2 = int(top + end_offset * pixels_per_minute)
 
-        logging.info(f"Drawing '{occ.name}' from y={y1} to y={y2}")
+        logging.info(f"Drawing '{occ.summary}' from y={y1} to y={y2}")
 
         image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
-        name = occ.name
+        name = occ.summary
         if len(name) > 18:
             name = name[:18] + "..."
         image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
         time_str = block_start.strftime('%H:%M')
         image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
-        if hasattr(occ.event, 'rrule') and occ.event.rrule:
-            logging.info(f"Occurrence from recurring event: '{occ.name}' with rules: {occ.event.rrule}")
+        if hasattr(occ, 'rrule') and occ.rrule:
+            logging.info(f"Occurrence from recurring event: '{occ.summary}' with rules: {occ.rrule}")
         else:
-            logging.info(f"Occurrence from non-recurring event: '{occ.name}'")
+            logging.info(f"Occurrence from non-recurring event: '{occ.summary}'")
 
     logging.info(f"Total occurrences processed: {count}")
 
@@ -160,7 +159,7 @@ try:
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
     calendar1_events = updateCal(["calendar1"])
-    process_upcoming_events(list(calendar1_events.events), event_amt=5)
+    process_upcoming_events(calendar1_events.events, event_amt=5)
     calendar2_real = updateCal(["calendar2"])
     draw_day_blocks(calendar2_real, drawblack, font18, epd.width, epd.height)
 
