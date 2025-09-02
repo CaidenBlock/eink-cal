@@ -68,12 +68,18 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
 
+    logging.info(f"Merged calendar has {len(calendar.events)} events")
+    for event in calendar.events:
+        logging.info(f"Event in merged calendar: '{event.name}' - {event.begin} to {event.end}")
+        if hasattr(event, 'recurrence_rules') and event.recurrence_rules:
+            logging.info(f"Recurring event: '{event.name}' with rules: {event.recurrence_rules}")
+
     timeline = Timeline(calendar)
     for occ in timeline.start_after(start_time):
         event_start = occ.begin.astimezone(tz)
         event_end = occ.end.astimezone(tz)
 
-        logging.info(f"Event '{occ.name}': {event_start} to {event_end}")
+        logging.info(f"Timeline event '{occ.name}': {event_start} to {event_end}")
 
         if event_end < start_time:
             logging.info(f"Skipping '{occ.name}': ends before window ({event_end} < {start_time})")
@@ -105,6 +111,9 @@ def merge_calendars(calendar_list):
     for cal in calendar_list:
         for event in cal.events:
             merged.events.add(event)
+            logging.info(f"Added event '{event.name}' to merged calendar")
+            if hasattr(event, 'recurrence_rules') and event.recurrence_rules:
+                logging.info(f"Event '{event.name}' has recurrence rules: {event.recurrence_rules}")
     return merged
 
 with open("secrets.json") as f:
