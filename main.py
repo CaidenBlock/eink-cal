@@ -143,14 +143,7 @@ try:
     calendar1_events = updateCal(["calendar1"])
     process_upcoming_events(list(calendar1_events[0].events), event_amt=5)
     calendars = updateCal(["calendar2", "calendar3"])
-
-    # Add dummy event
-    from ics import Event
-    tz = ZoneInfo("America/Chicago")
-    now = datetime.datetime.now(tz)
-    # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
-    merged_calendar = merge_calendars(calendars)
-    draw_day_blocks(merged_calendar, drawblack, font18, epd.width, epd.height)
+    draw_day_blocks(calendars, drawblack, font18, epd.width, epd.height)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
