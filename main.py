@@ -5,7 +5,6 @@ import os
 import requests
 from zoneinfo import ZoneInfo
 from ical.calendar import Calendar
-from ical.store import Store
 import datetime
 picdir = './pic'
 fontdir = './font'
@@ -15,6 +14,7 @@ import time
 from PIL import Image,ImageDraw,ImageFont
 import traceback
 import json
+from dateutil.rrule import rrulestr
 
 def updateCal(calendar_keys):
     calendars = []
@@ -82,36 +82,66 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         if hasattr(event, 'rrule') and event.rrule:
             logging.info(f"Recurring event: '{event.summary}' with rules: {event.rrule}")
 
-    store = Store(calendar)
     count = 0
-    for occ in store.expand(start_time, end_time):
-        count += 1
-        event_start = occ.dtstart.astimezone(tz)
-        event_end = occ.dtend.astimezone(tz)
+    for event in calendar.events:
+        if hasattr(event, 'rrule') and event.rrule:
+            # Expand recurring event
+            rule = rrulestr(event.rrule)
+            duration = event.dtend - event.dtstart
+            for dt in rule.between(start_time, end_time, inc=True):
+                count += 1
+                event_start = dt.replace(tzinfo=tz) if dt.tzinfo is None else dt.astimezone(tz)
+                event_end = event_start + duration
 
-        logging.info(f"Occurrence {count}: '{occ.summary}' - {event_start} to {event_end}")
+                logging.info(f"Occurrence {count}: '{event.summary}' - {event_start} to {event_end}")
 
-        block_start = max(event_start, start_time)
-        block_end = min(event_end, end_time)
-        start_offset = (block_start - start_time).total_seconds() / 60
-        end_offset = (block_end - start_time).total_seconds() / 60
-        y1 = int(top + start_offset * pixels_per_minute)
-        y2 = int(top + end_offset * pixels_per_minute)
+                block_start = max(event_start, start_time)
+                block_end = min(event_end, end_time)
+                start_offset = (block_start - start_time).total_seconds() / 60
+                end_offset = (block_end - start_time).total_seconds() / 60
+                y1 = int(top + start_offset * pixels_per_minute)
+                y2 = int(top + end_offset * pixels_per_minute)
 
-        logging.info(f"Drawing '{occ.summary}' from y={y1} to y={y2}")
+                logging.info(f"Drawing '{event.summary}' from y={y1} to y={y2}")
 
-        image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
-        name = occ.summary
-        if len(name) > 18:
-            name = name[:18] + "..."
-        image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
-        time_str = block_start.strftime('%H:%M')
-        image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
+                image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
+                name = event.summary
+                if len(name) > 18:
+                    name = name[:18] + "..."
+                image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
+                time_str = block_start.strftime('%H:%M')
+                image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
 
-        if hasattr(occ, 'rrule') and occ.rrule:
-            logging.info(f"Occurrence from recurring event: '{occ.summary}' with rules: {occ.rrule}")
+                logging.info(f"Occurrence from recurring event: '{event.summary}' with rules: {event.rrule}")
         else:
-            logging.info(f"Occurrence from non-recurring event: '{occ.summary}'")
+            # Single event
+            event_start = event.dtstart.astimezone(tz)
+            event_end = event.dtend.astimezone(tz)
+
+            if event_end < start_time or event_start > end_time:
+                continue
+
+            count += 1
+            logging.info(f"Occurrence {count}: '{event.summary}' - {event_start} to {event_end}")
+
+            block_start = max(event_start, start_time)
+            block_end = min(event_end, end_time)
+            start_offset = (block_start - start_time).total_seconds() / 60
+            end_offset = (block_end - start_time).total_seconds() / 60
+            y1 = int(top + start_offset * pixels_per_minute)
+            y2 = int(top + end_offset * pixels_per_minute)
+
+            logging.info(f"Drawing '{event.summary}' from y={y1} to y={y2}")
+
+            image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
+            name = event.summary
+            if len(name) > 18:
+                name = name[:18] + "..."
+            image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
+            time_str = block_start.strftime('%H:%M')
+            image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
+
+            logging.info(f"Occurrence from non-recurring event: '{event.summary}'")
 
     logging.info(f"Total occurrences processed: {count}")
 
