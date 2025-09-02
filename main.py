@@ -51,7 +51,7 @@ def process_upcoming_events(events, event_amt=5):
                 name = name[:21] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font18, fill=0)
 
-def draw_day_blocks(calendars, image, font, epd_width, epd_height):
+def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     tz = ZoneInfo("America/Chicago")
     now = datetime.datetime.now(tz)
     start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
@@ -68,8 +68,7 @@ def draw_day_blocks(calendars, image, font, epd_width, epd_height):
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
 
-    # Pass the list of Calendar objects to Timeline
-    timeline = Timeline(calendars)
+    timeline = Timeline(calendar)
     for occ in timeline.start_after(start_time):
         event_start = occ.begin.astimezone(tz)
         event_end = occ.end.astimezone(tz)
@@ -143,7 +142,8 @@ try:
     calendar1_events = updateCal(["calendar1"])
     process_upcoming_events(list(calendar1_events[0].events), event_amt=5)
     calendars = updateCal(["calendar2", "calendar3"])
-    draw_day_blocks(calendars, drawblack, font18, epd.width, epd.height)
+    merged_calendar = merge_calendars(calendars)
+    draw_day_blocks(merged_calendar, drawblack, font18, epd.width, epd.height)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
