@@ -30,10 +30,10 @@ try:
 
     # Drawing on the Horizontal image
     logging.info("1.Drawing on the Horizontal image...") 
-    HBlackimage = Image.new('1', (epd.width, epd.height), 255)  # 298*126
-    HRYimage = Image.new('1', (epd.width, epd.height), 255)  # 298*126  ryimage: red or yellow image  
+    HBlackimage = Image.new('1', (epd.width, epd.height), 255)
+    HRimage = Image.new('1', (epd.width, epd.height), 255)  # 298*126  ryimage: red or yellow image  
     drawblack = ImageDraw.Draw(HBlackimage)
-    drawry = ImageDraw.Draw(HRYimage)
+    drawred = ImageDraw.Draw(HRimage)
     drawblack.text((10, 0), 'hello world', font = font24, fill = 0)
     # drawblack.text((10, 20), '7.5inch e-Paper bc', font = font24, fill = 0)
     # drawblack.text((150, 0), u'微雪电子', font = font24, fill = 0)    
@@ -45,10 +45,13 @@ try:
     # drawry.arc((140, 50, 190, 100), 0, 360, fill = 0)
     # drawry.rectangle((80, 50, 130, 100), fill = 0)
     # drawry.chord((200, 50, 250, 100), 0, 360, fill = 0)
-    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRYimage))
+    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
     
-
+    HBlackimage = Image.open(os.path.join(picdir, '7in5b-b.bmp'))
+    HRimage = Image.open(os.path.join(picdir, '7in5b-r.bmp'))
+    epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
+    time.sleep(2)
     
     # logging.info("Clear...")
     # epd.init()
