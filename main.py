@@ -159,7 +159,7 @@ try:
     calendars.append(dummy_event)
 
     # Draw calendar 1 events (up to 5)
-    process_upcoming_events(calendar1_events, event_amt=5)
+    process_upcoming_events(list(calendar1_events.events), event_amt=5)
 
     # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
     merged_calendar = merge_calendars(calendars)
