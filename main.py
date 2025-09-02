@@ -64,6 +64,7 @@ try:
     for event in sorted(calendar.events, key=lambda e: e.begin):
         if event.begin.datetime > now:
             upcoming_events.append(event)
+            print(f" - {event.name} at {event.begin.datetime}")
         if len(upcoming_events) >= x:
             break
 
