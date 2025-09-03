@@ -123,7 +123,7 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         start_time -= timedelta(days=1)
     end_time = start_time + timedelta(hours=22)
     
-    logging.info(f"Filtering events between {start_time} and {end_time}")
+    logging.info(f"Time window: {start_time} to {end_time}")
     
     # Filter events within the date range
     filtered_events = [
@@ -132,62 +132,63 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     ]
     
     logging.info(f"Found {len(filtered_events)} events in the range")
-    
-    # Print filtered event summaries
-    for event in filtered_events:
-        logging.info(f"Event: {event.summary}")
-        logging.info(f"  Start: {event.dtstart}")
-        logging.info(f"  End: {event.dtend}")
-        if hasattr(event, 'rrule') and event.rrule:
-            logging.info(f"  Recurrence: {event.rrule}")
 
     # Block area: rightmost 200 pixels
     block_left = epd_width - 200  # 440
     block_right = epd_width - 1   # 639
     top = 0
     bottom = epd_height           # 384
+    
+    logging.info(f"Drawing area: left={block_left}, right={block_right}, top={top}, bottom={bottom}")
 
     time_window_minutes = (end_time - start_time).total_seconds() / 60
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
     
-    # Draw hour markers FIRST (before event blocks)
-    for hour in range(start_time.hour, (end_time + timedelta(minutes=1)).hour + 1):
+    logging.info(f"Time window: {time_window_minutes} minutes, {vertical_pixels} pixels")
+    logging.info(f"Scale: {pixels_per_minute} pixels per minute")
+    
+    # Draw a border around the timeline area (for debugging)
+    image.rectangle([block_left, top, block_right, bottom], outline=0, fill=None)
+    
+    # Draw hour markers with explicit coordinates
+    for hour in range(start_time.hour, end_time.hour + 1):
         marker_time = start_time.replace(hour=hour, minute=0)
-        if marker_time > end_time:
-            break
-        y_marker = int(top + ((marker_time - start_time).total_seconds() / 60) * pixels_per_minute)
+        minutes_from_start = (marker_time - start_time).total_seconds() / 60
+        y_marker = int(top + minutes_from_start * pixels_per_minute)
         
-        # Draw dashed line
-        dash_length = 5  # Length of each dash
-        gap_length = 3   # Length of gap between dashes
-        x = block_left
-        while x < block_right:
-            line_end = min(x + dash_length, block_right)
-            image.line([x, y_marker, line_end, y_marker], fill=0)  # Changed to black (0)
-            x = line_end + gap_length
+        logging.info(f"Hour {hour}: y={y_marker}, minutes_from_start={minutes_from_start}")
         
-        # Format hour text in 12-hour format with am/pm
+        # Draw solid line (more visible for debugging)
+        image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
+        
+        # Format hour text
         hour_str = f"{hour % 12 or 12}"
         am_pm = "a" if hour < 12 else "p"
         time_str = f"{hour_str}{am_pm}"
         
-        # Draw hour text in black (0), not white (255)
-        image.text((block_left + 2, y_marker - 8), time_str, font=font, fill=0)
+        # Draw hour text - try different parameters
+        image.text((block_left + 5, y_marker - 12), time_str, font=font, fill=0)
     
-    # Draw timeline blocks for each event AFTER hour markers
+    # Draw timeline blocks for each event
     for event in filtered_events:
         # Clamp event start/end to the time window
         event_start = max(event.dtstart, start_time)
         event_end = min(event.dtend, end_time)
+        
         # Calculate vertical positions
         start_offset_min = (event_start - start_time).total_seconds() / 60
         end_offset_min = (event_end - start_time).total_seconds() / 60
+        
         y_start = int(top + start_offset_min * pixels_per_minute)
         y_end = int(top + end_offset_min * pixels_per_minute)
-        # Draw block
-        image.rectangle([block_left, y_start, block_right, y_end], fill=0)
-        # Draw event summary text (truncate if needed)
+        
+        logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
+        
+        # Draw block with border
+        image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
+        
+        # Draw event summary text with higher contrast
         summary = event.summary if len(event.summary) <= 18 else event.summary[:15] + "..."
         image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
 
@@ -209,6 +210,7 @@ try:
     font18fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 18)
     font18 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
     font32fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 32)
+    font48fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 48)
 
 
     # Drawing on the Horizontal image
@@ -221,7 +223,7 @@ try:
     drawblack.line((epd.width - 200, 0, epd.width - 200, epd.height), fill = 0, width=3)
 
     date_str = datetime.now().strftime('%Y-%m-%d')
-    drawred.text((10, 10), date_str, font = font32fs, fill = 0)
+    drawred.text((10, 10), date_str, font = font48fs, fill = 0)
 
     # Get calendar1 (always fresh)
     calendar1_events = updateCal(["calendar1"])
