@@ -72,7 +72,7 @@ def process_upcoming_events(calendar, event_amt=5):
             name = event.summary
             if len(name) > 18:
                 name = name[:18] + "..."
-            drawblack.text((10, y), f"{start_str} {name}", font=font18, fill=0)
+            drawblack.text((10, y), f"{start_str} {name}", font=font24, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
     cache_dir = Path('./cache')
@@ -189,9 +189,11 @@ try:
 
     # Drawing on the image
     logging.info("Drawing")    
-    font24 = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 24)
+    font24fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 24)
+    font24 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 24)
+    font18fs = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
     font18 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
-    font32 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 32)
+    font32fs = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 32)
 
 
     # Drawing on the Horizontal image
@@ -204,7 +206,7 @@ try:
     drawblack.line((epd.width - 200, 0, epd.width - 200, epd.height), fill = 0, width=3)
 
     date_str = datetime.now().strftime('%Y-%m-%d')
-    drawred.text((10, 10), date_str, font = font32, fill = 0)
+    drawred.text((10, 10), date_str, font = font32fs, fill = 0)
 
     # Get calendar1 (always fresh)
     calendar1_events = updateCal(["calendar1"])
@@ -214,7 +216,7 @@ try:
     ics_url = secrets["calendar2"]
     calendar2 = get_cached_calendar(ics_url)
     if calendar2:
-        draw_day_blocks(calendar2, drawblack, font18, epd.width, epd.height)
+        draw_day_blocks(calendar2, drawblack, font18fs, epd.width, epd.height)
     else:
         logging.error("Failed to get calendar2, skipping day blocks")
 
