@@ -119,8 +119,6 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     tz = ZoneInfo("America/Chicago")
     now = datetime.now(tz)
     start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
-    if now.hour < 5:
-        start_time -= timedelta(days=1)
     end_time = start_time + timedelta(hours=22)
     
     logging.info(f"Time window: {start_time} to {end_time}")
@@ -180,9 +178,9 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         # Use 24-hour format without am/pm
         time_str = f"{hour}"
         
-        # Draw hour text at right edge, moved down by 6px
+        # Draw hour text at right edge
         text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
-        image.text((block_right - text_width - 5, y_marker + 6), time_str, font=font, fill=0)
+        image.text((block_right - text_width - 5, y_marker), time_str, font=font, fill=0)
     
     # Draw timeline blocks for each event
     for event in filtered_events:
