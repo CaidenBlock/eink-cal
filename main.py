@@ -68,11 +68,11 @@ def process_upcoming_events(calendar, event_amt=5):
         for i, event in enumerate(upcoming_events[:event_amt]):
             y = 75 + i * 30
             start_dt = event.dtstart.astimezone(ZoneInfo("America/Chicago"))
-            start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
+            start_str = start_dt.strftime('%m-%d@%H:%M')
             name = event.summary
             if len(name) > 21:
                 name = name[:21] + "..."
-            drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
+            drawblack.text((10, y), f"{start_str} {name}", font=font18, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
     cache_dir = Path('./cache')
