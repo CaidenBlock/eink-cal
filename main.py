@@ -7,6 +7,10 @@ from zoneinfo import ZoneInfo
 from ical.calendar_stream import IcsCalendarStream
 from ical.exceptions import CalendarParseError
 from datetime import datetime, timedelta
+import pickle
+from pathlib import Path
+import time as systime
+
 picdir = './pic'
 fontdir = './font'
 import logging
@@ -70,46 +74,72 @@ def process_upcoming_events(calendar, event_amt=5):
                 name = name[:21] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
 
-def draw_day_blocks(ics_url, image, font, epd_width, epd_height):
-    # Time window: 5AM today to 3AM tomorrow (22 hours)
+def get_cached_calendar(ics_url, cache_time_minutes=60):
+    cache_dir = Path('./cache')
+    cache_dir.mkdir(exist_ok=True)
+    
+    # Create a filename based on the URL
+    import hashlib
+    url_hash = hashlib.md5(ics_url.encode()).hexdigest()
+    cache_file = cache_dir / f"{url_hash}.pickle"
+    
+    # Check if cache exists and is recent enough
+    if cache_file.exists():
+        file_age_minutes = (systime.time() - cache_file.stat().st_mtime) / 60
+        if file_age_minutes < cache_time_minutes:
+            try:
+                with open(cache_file, 'rb') as f:
+                    logging.info(f"Using cached calendar data ({file_age_minutes:.1f} min old)")
+                    return pickle.load(f)
+            except Exception as e:
+                logging.error(f"Error loading cache: {e}")
+    
+    # Fetch and parse the calendar
+    logging.info("Fetching fresh calendar data")
     response = requests.get(ics_url)
     if response.status_code != 200:
-        print(f"Failed to fetch ICS file: HTTP {response.status_code}")
-    else:
-        try:
-            # Parse the ICS content
-            calendar = IcsCalendarStream.calendar_from_ics(response.text)
+        logging.error(f"Failed to fetch ICS file: HTTP {response.status_code}")
+        return None
+        
+    try:
+        calendar = IcsCalendarStream.calendar_from_ics(response.text)
+        
+        # Save to cache
+        with open(cache_file, 'wb') as f:
+            pickle.dump(calendar, f)
             
-            # Define date range to filter
-            tz = ZoneInfo("America/Chicago")
-            now = datetime.now(tz)
-            start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
-            if now.hour < 5:
-                start_time -= timedelta(days=1)
-            end_time = start_time + timedelta(hours=22)
-            
-            print(f"Filtering events between {start_time} and {end_time}")
-            
-            # Filter events within the date range
-            filtered_events = [
-                event for event in calendar.timeline
-                if (event.dtend > start_time and event.dtstart < end_time)
-            ]
-            
-            print(f"Found {len(filtered_events)} events in the range")
-            
-            # Print filtered event summaries
-            for event in filtered_events:
-                print(f"Event: {event.summary}")
-                print(f"  Start: {event.dtstart}")
-                print(f"  End: {event.dtend}")
-                if hasattr(event, 'rrule') and event.rrule:
-                    print(f"  Recurrence: {event.rrule}")
-                print("---")
-            
-        except CalendarParseError as err:
-            print(f"Failed to parse ics file from {ics_url}: {err}")
+        return calendar
+    except CalendarParseError as err:
+        logging.error(f"Failed to parse ics file from {ics_url}: {err}")
+        return None
 
+# Update draw_day_blocks to accept a calendar object instead of a URL
+def draw_day_blocks(calendar, image, font, epd_width, epd_height):
+    # Time window: 5AM today to 3AM tomorrow (22 hours)
+    tz = ZoneInfo("America/Chicago")
+    now = datetime.now(tz)
+    start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
+    if now.hour < 5:
+        start_time -= timedelta(days=1)
+    end_time = start_time + timedelta(hours=22)
+    
+    logging.info(f"Filtering events between {start_time} and {end_time}")
+    
+    # Filter events within the date range
+    filtered_events = [
+        event for event in calendar.timeline
+        if (event.dtend > start_time and event.dtstart < end_time)
+    ]
+    
+    logging.info(f"Found {len(filtered_events)} events in the range")
+    
+    # Print filtered event summaries
+    for event in filtered_events:
+        logging.info(f"Event: {event.summary}")
+        logging.info(f"  Start: {event.dtstart}")
+        logging.info(f"  End: {event.dtend}")
+        if hasattr(event, 'rrule') and event.rrule:
+            logging.info(f"  Recurrence: {event.rrule}")
 
     # Block area: rightmost 200 pixels
     block_left = epd_width - 200  # 440
@@ -120,6 +150,7 @@ def draw_day_blocks(ics_url, image, font, epd_width, epd_height):
     time_window_minutes = (end_time - start_time).total_seconds() / 60
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
+    
     # Draw timeline blocks for each event
     for event in filtered_events:
         # Clamp event start/end to the time window
@@ -144,8 +175,6 @@ def draw_day_blocks(ics_url, image, font, epd_width, epd_height):
         y_marker = int(top + ((marker_time - start_time).total_seconds() / 60) * pixels_per_minute)
         image.line([block_left, y_marker, block_right, y_marker], fill=128)
         image.text((block_left + 2, y_marker - 8), f"{hour:02d}:00", font=font, fill=128)
-
-
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -177,14 +206,17 @@ try:
     date_str = datetime.now().strftime('%Y-%m-%d')
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
+    # Get calendar1 (always fresh)
     calendar1_events = updateCal(["calendar1"])
-
-    # Draw calendar 1 events (up to 5)
     process_upcoming_events(calendar1_events, event_amt=5)
 
-    # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
-    ics_url = secrets["calendar2"]    
-    draw_day_blocks(ics_url, drawblack, font18, epd.width, epd.height)
+    # Get calendar2 (cached)
+    ics_url = secrets["calendar2"]
+    calendar2 = get_cached_calendar(ics_url)
+    if calendar2:
+        draw_day_blocks(calendar2, drawblack, font18, epd.width, epd.height)
+    else:
+        logging.error("Failed to get calendar2, skipping day blocks")
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
