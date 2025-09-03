@@ -19,25 +19,43 @@ import json
 with open("secrets.json") as f:
     secrets = json.load(f)
 
-# def updateCal(calendar_keys):
-#     all_events = []
-#     for key in calendar_keys:
-#         ics_url = secrets[key]
-#         # Support webcal:// URLs
-#         if ics_url.startswith("webcal://"):
-#             ics_url = ics_url.replace("webcal://", "https://", 1)
-#         response = requests.get(ics_url)
-#         calendar = Calendar(response.text)
-#         all_events.extend(calendar.events)
-#     return all_events
+def updateCal(calendar_keys):
+    all_calendars = []
+    for key in calendar_keys:
+        ics_url = secrets[key]
+        # Support webcal:// URLs
+        if ics_url.startswith("webcal://"):
+            ics_url = ics_url.replace("webcal://", "https://", 1)
+        response = requests.get(ics_url)
+        if response.status_code == 200:
+            try:
+                calendar = IcsCalendarStream.calendar_from_ics(response.text)
+                all_calendars.append(calendar)
+            except CalendarParseError as err:
+                logging.error(f"Failed to parse calendar for {key}: {err}")
+    
+    if len(all_calendars) == 1:
+        return all_calendars[0]
+    elif len(all_calendars) > 1:
+        # Merge calendars - not a built-in function in ical, so we'll return the list
+        # and handle merging elsewhere
+        return all_calendars
+    else:
+        # No calendars parsed successfully
+        logging.error("No calendars were successfully parsed")
+        return None
 
-def process_upcoming_events(events, event_amt=5):
+def process_upcoming_events(calendar, event_amt=5):
     now = datetime.now(ZoneInfo("America/Chicago"))
     today = now.date()
+    
+    # Get all events from the calendar and sort by start time
+    events = sorted(calendar.timeline, key=lambda e: e.dtstart)
+    
     upcoming_events = []
-    for event in sorted(events, key=lambda e: e.begin):
-        event_date = event.begin.datetime.astimezone(ZoneInfo("America/Chicago")).date()
-        if event.begin.datetime > now or event_date == today:
+    for event in events:
+        event_date = event.dtstart.astimezone(ZoneInfo("America/Chicago")).date()
+        if event.dtstart > now or event_date == today:
             upcoming_events.append(event)
         if len(upcoming_events) >= event_amt:
             break
@@ -45,9 +63,9 @@ def process_upcoming_events(events, event_amt=5):
     if upcoming_events:
         for i, event in enumerate(upcoming_events[:event_amt]):
             y = 75 + i * 30
-            start_dt = event.begin.datetime.astimezone(ZoneInfo("America/Chicago"))
+            start_dt = event.dtstart.astimezone(ZoneInfo("America/Chicago"))
             start_str = start_dt.strftime('%Y-%m-%d @ %H:%M')
-            name = event.name
+            name = event.summary
             if len(name) > 21:
                 name = name[:21] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
@@ -153,15 +171,16 @@ try:
     HRimage = Image.new('1', (epd.width, epd.height), 255)
     drawblack = ImageDraw.Draw(HBlackimage)
     drawred = ImageDraw.Draw(HRimage)
-    drawblack.line((0, 60, epd.width, 60), fill = 0, width=3)
+    drawblack.line((0, 60, epd.width-200, 60), fill = 0, width=3)
+    drawblack.line((epd.width - 200, 0, epd.width - 200, epd.height), fill = 0, width=3)
 
     date_str = datetime.now().strftime('%Y-%m-%d')
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
-    # calendar1_events = updateCal(["calendar1"])
+    calendar1_events = updateCal(["calendar1"])
 
     # Draw calendar 1 events (up to 5)
-    # process_upcoming_events(calendar1_events, event_amt=5)
+    process_upcoming_events(calendar1_events, event_amt=5)
 
     # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
     ics_url = secrets["calendar2"]    
