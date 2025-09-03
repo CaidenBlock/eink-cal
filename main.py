@@ -173,8 +173,8 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         if marker_time > end_time:
             break
         y_marker = int(top + ((marker_time - start_time).total_seconds() / 60) * pixels_per_minute)
-        image.line([block_left, y_marker, block_right, y_marker], fill=128)
-        image.text((block_left + 2, y_marker - 8), f"{hour:02d}:00", font=font, fill=128)
+        image.line([block_left, y_marker, block_right, y_marker], fill=255)
+        image.text((block_left + 2, y_marker - 8), f"{hour:02d}:00", font=font, fill=255)
 
 logging.basicConfig(level=logging.DEBUG)
 
