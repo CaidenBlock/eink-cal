@@ -164,7 +164,8 @@ try:
     # process_upcoming_events(calendar1_events, event_amt=5)
 
     # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
-    draw_day_blocks("calendar2", drawblack, font18, epd.width, epd.height)
+    ics_url = secrets["calendar2"]    
+    draw_day_blocks(ics_url, drawblack, font18, epd.width, epd.height)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
