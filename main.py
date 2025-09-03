@@ -72,7 +72,7 @@ def process_upcoming_events(calendar, event_amt=5):
             name = event.summary
             if len(name) > 18:
                 name = name[:18] + "..."
-            drawblack.text((10, y), f"{start_str} {name}", font=font24, fill=0)
+            drawblack.text((10, y), f"{start_str} {name}", font=font24fs, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
     cache_dir = Path('./cache')
