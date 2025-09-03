@@ -114,7 +114,7 @@ def get_cached_calendar(ics_url, cache_time_minutes=60):
         return None
 
 # Update draw_day_blocks to accept a calendar object instead of a URL
-def draw_day_blocks(calendar, image, font, epd_width, epd_height):
+def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_height):
     # Time window: 5AM today to 3AM tomorrow (22 hours)
     tz = ZoneInfo("America/Chicago")
     now = datetime.now(tz)
@@ -137,52 +137,11 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     top = 0
     bottom = epd_height           # 384
     
-    logging.info(f"Drawing area: left={block_left}, right={block_right}, top={top}, bottom={bottom}")
-
     time_window_minutes = (end_time - start_time).total_seconds() / 60
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
     
-    logging.info(f"Time window: {time_window_minutes} minutes, {vertical_pixels} pixels")
-    logging.info(f"Scale: {pixels_per_minute} pixels per minute")
-    
-    # Draw a border around the timeline area (for debugging)
-    # image.rectangle([block_left, top, block_right, bottom], outline=0, fill=None)
-    
-    # Draw hour markers with explicit coordinates
-    hours_to_draw = []
-    current_hour = start_time.hour
-    while True:
-        hours_to_draw.append(current_hour)
-        current_hour = (current_hour + 1) % 24
-        if current_hour == (end_time.hour + 1) % 24:
-            break
-
-    logging.info(f"Hours to draw: {hours_to_draw}")
-
-    for hour in hours_to_draw:
-        marker_time = start_time.replace(hour=hour, minute=0)
-        if marker_time < start_time:
-            marker_time = marker_time + timedelta(days=1)  # Move to next day
-        if marker_time > end_time:
-            continue
-            
-        minutes_from_start = (marker_time - start_time).total_seconds() / 60
-        y_marker = int(top + minutes_from_start * pixels_per_minute)
-        
-        logging.info(f"Hour {hour}: y={y_marker}, minutes_from_start={minutes_from_start}")
-        
-        # Draw solid line
-        image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
-        
-        # Use 24-hour format without am/pm
-        time_str = f"{hour}"
-        
-        # Draw hour text at right edge
-        text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
-        image.text((block_right - text_width - 5, y_marker), time_str, font=font, fill=0)
-    
-    # Draw timeline blocks for each event
+    # Draw timeline blocks for each event (in RED)
     for event in filtered_events:
         # Clamp event start/end to the time window
         event_start = max(event.dtstart, start_time)
@@ -197,12 +156,42 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         
         logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
         
-        # Draw block with border
-        image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
+        # Draw block with border in RED
+        red_image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
         
         # Draw event summary text with higher contrast
         summary = event.summary if len(event.summary) <= 18 else event.summary[:15] + "..."
-        image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
+        red_image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
+    
+    # Draw hour markers with explicit coordinates (in BLACK, LAST)
+    hours_to_draw = []
+    current_hour = start_time.hour
+    while True:
+        hours_to_draw.append(current_hour)
+        current_hour = (current_hour + 1) % 24
+        if current_hour == (end_time.hour + 1) % 24:
+            break
+
+    for hour in hours_to_draw:
+        marker_time = start_time.replace(hour=hour, minute=0)
+        if marker_time < start_time:
+            marker_time = marker_time + timedelta(days=1)  # Move to next day
+        if marker_time > end_time:
+            continue
+            
+        minutes_from_start = (marker_time - start_time).total_seconds() / 60
+        y_marker = int(top + minutes_from_start * pixels_per_minute)
+        
+        # Draw solid line in BLACK
+        black_image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
+        
+        # Use 24-hour format without am/pm
+        time_str = f"{hour}"
+        
+        # Draw hour text at right edge in BLACK
+        text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
+        black_image.text((block_right - text_width - 5, y_marker + 6), time_str, font=font, fill=0)
+    
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -245,7 +234,7 @@ try:
     ics_url = secrets["calendar2"]
     calendar2 = get_cached_calendar(ics_url)
     if calendar2:
-        draw_day_blocks(calendar2, drawblack, font18fs, epd.width, epd.height)
+        draw_day_blocks(calendar2, drawblack, drawred, font18fs, epd.width, epd.height)
     else:
         logging.error("Failed to get calendar2, skipping day blocks")
 
