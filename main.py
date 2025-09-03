@@ -177,13 +177,12 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         # Draw solid line
         image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
         
-        # Format hour text
-        hour_str = f"{hour % 12 or 12}"
-        am_pm = "a" if hour < 12 else "p"
-        time_str = f"{hour_str}{am_pm}"
+        # Use 24-hour format without am/pm
+        time_str = f"{hour}"
         
-        # Draw hour text
-        image.text((block_left + 5, y_marker - 12), time_str, font=font, fill=0)
+        # Draw hour text at right edge, moved down by 6px
+        text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
+        image.text((block_right - text_width - 5, y_marker + 6), time_str, font=font, fill=0)
     
     # Draw timeline blocks for each event
     for event in filtered_events:
