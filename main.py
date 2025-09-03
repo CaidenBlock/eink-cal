@@ -141,9 +141,8 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
     
-    # First, calculate the hour marker positions so we can avoid overlapping
-    hour_marker_positions = []
-    
+    # First, calculate all hour marker positions
+    hour_positions = []
     hours_to_draw = []
     current_hour = start_time.hour
     while True:
@@ -161,12 +160,7 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
             
         minutes_from_start = (marker_time - start_time).total_seconds() / 60
         y_marker = int(top + minutes_from_start * pixels_per_minute)
-        
-        # Store the marker position and the text area (for avoiding overlap)
-        text_width = font.getsize(str(hour))[0] if hasattr(font, 'getsize') else len(str(hour)) * 8
-        text_height = font.getsize(str(hour))[1] if hasattr(font, 'getsize') else 16
-        text_area = (block_right - text_width - 5, y_marker + 6, block_right, y_marker + 6 + text_height)
-        hour_marker_positions.append((y_marker, text_area))
+        hour_positions.append((hour, y_marker))
     
     # Draw timeline blocks for each event (in RED)
     for event in filtered_events:
@@ -183,37 +177,25 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         
         logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
         
-        # Draw block with border in RED
-        red_image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
+        # Draw a red block that leaves room for hour markers on the right side
+        red_rect_right = block_right - 20  # Leave space for hour text on the right
+        red_image.rectangle([block_left, y_start, red_rect_right, y_end], outline=0, fill=0)
         
-        # Draw event summary text with higher contrast
-        summary = event.summary if len(event.summary) <= 18 else event.summary[:15] + "..."
-        
-        # Check if we need to adjust the text position to avoid hour markers
-        text_y = y_start + 2
-        text_height = font.getsize(summary)[1] if hasattr(font, 'getsize') else 16
-        
-        # If text would overlap with an hour marker, shift it up
-        for marker_y, text_area in hour_marker_positions:
-            # If the event text overlaps with an hour marker text
-            if (text_y <= text_area[3] and text_y + text_height >= text_area[1]):
-                # Draw the text higher to avoid overlap
-                text_y = text_area[1] - text_height - 2
-                break
-        
-        red_image.text((block_left + 5, text_y), summary, font=font, fill=255)
+        # Draw event summary text (shorter to fit in the narrower block)
+        summary = event.summary if len(event.summary) <= 15 else event.summary[:12] + "..."
+        red_image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
     
-    # Draw hour markers with explicit coordinates (in BLACK, LAST)
-    for y_marker, text_area in hour_marker_positions:
+    # Draw hour markers and labels in BLACK
+    for hour, y_marker in hour_positions:
         # Draw solid line in BLACK
         black_image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
         
         # Use 24-hour format without am/pm
-        hour = int((y_marker / vertical_pixels) * time_window_minutes / 60 + start_time.hour) % 24
         time_str = f"{hour}"
         
         # Draw hour text at right edge in BLACK
-        black_image.text((text_area[0], text_area[1]), time_str, font=font, fill=0)
+        text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
+        black_image.text((block_right - text_width - 5, y_marker + 6), time_str, font=font, fill=0)
     
 
 logging.basicConfig(level=logging.DEBUG)
