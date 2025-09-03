@@ -178,8 +178,6 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         # Calculate event duration in minutes
         event_duration_minutes = (event_end - event_start).total_seconds() / 60
         
-        logging.info(f"Event: {event.summary}, duration: {event_duration_minutes} minutes, y_start={y_start}, y_end={y_end}")
-        
         # Draw event block in RED
         red_image.rectangle([block_left + 2, y_start, block_right, y_end], outline=0, fill=0)
         
@@ -191,8 +189,15 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         
         # If event is longer than an hour, you could center it vertically
         if event_duration_minutes >= 60:
-            # Calculate text height (approximate if getsize not available)
-            text_height = font.getsize(summary)[1] if hasattr(font, 'getsize') else 12
+            # Calculate text height using getbbox instead of getsize
+            if hasattr(font, 'getbbox'):
+                _, _, _, text_height = font.getbbox(summary)
+            elif hasattr(font, 'getlength'):
+                # Approximate height if only getlength is available
+                text_height = int(font.getlength(summary) * 0.4)
+            else:
+                # Fallback to a reasonable default
+                text_height = 12
             
             # Only center if there's enough space for the text to fit
             block_height = y_end - y_start
@@ -212,8 +217,15 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         # Use 24-hour format without am/pm
         time_str = f"{hour}"
         
-        # Calculate text position (same for both layers)
-        text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
+        # Calculate text position using getbbox or getlength instead of getsize
+        if hasattr(font, 'getbbox'):
+            left, top, right, bottom = font.getbbox(time_str)
+            text_width = right - left
+        elif hasattr(font, 'getlength'):
+            text_width = int(font.getlength(time_str))
+        else:
+            text_width = len(time_str) * 8
+            
         text_x = block_right - text_width - 5
         text_y = y_marker
         
