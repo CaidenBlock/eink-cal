@@ -149,17 +149,32 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     logging.info(f"Scale: {pixels_per_minute} pixels per minute")
     
     # Draw a border around the timeline area (for debugging)
-    image.rectangle([block_left, top, block_right, bottom], outline=0, fill=None)
+    # image.rectangle([block_left, top, block_right, bottom], outline=0, fill=None)
     
     # Draw hour markers with explicit coordinates
-    for hour in range(start_time.hour, end_time.hour + 1):
+    hours_to_draw = []
+    current_hour = start_time.hour
+    while True:
+        hours_to_draw.append(current_hour)
+        current_hour = (current_hour + 1) % 24
+        if current_hour == (end_time.hour + 1) % 24:
+            break
+
+    logging.info(f"Hours to draw: {hours_to_draw}")
+
+    for hour in hours_to_draw:
         marker_time = start_time.replace(hour=hour, minute=0)
+        if marker_time < start_time:
+            marker_time = marker_time + timedelta(days=1)  # Move to next day
+        if marker_time > end_time:
+            continue
+            
         minutes_from_start = (marker_time - start_time).total_seconds() / 60
         y_marker = int(top + minutes_from_start * pixels_per_minute)
         
         logging.info(f"Hour {hour}: y={y_marker}, minutes_from_start={minutes_from_start}")
         
-        # Draw solid line (more visible for debugging)
+        # Draw solid line
         image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
         
         # Format hour text
@@ -167,7 +182,7 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         am_pm = "a" if hour < 12 else "p"
         time_str = f"{hour_str}{am_pm}"
         
-        # Draw hour text - try different parameters
+        # Draw hour text
         image.text((block_left + 5, y_marker - 12), time_str, font=font, fill=0)
     
     # Draw timeline blocks for each event
