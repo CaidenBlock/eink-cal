@@ -70,8 +70,8 @@ def process_upcoming_events(calendar, event_amt=5):
             start_dt = event.dtstart.astimezone(ZoneInfo("America/Chicago"))
             start_str = start_dt.strftime('%m-%d@%H:%M')
             name = event.summary
-            if len(name) > 21:
-                name = name[:21] + "..."
+            if len(name) > 18:
+                name = name[:18] + "..."
             drawblack.text((10, y), f"{start_str} {name}", font=font18, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
