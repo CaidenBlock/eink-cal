@@ -71,7 +71,7 @@ def process_upcoming_events(calendar, event_amt):
             start_str = start_dt.strftime('%m-%d @ %H:%M')
             name = event.summary
             if len(name) > 24:
-                name = name[:24] + "..."
+                name = name[:24] + ".."
             drawblack.text((10, y), f"{start_str} - {name}", font=font20fs, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
@@ -175,14 +175,31 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         y_start = int(top + start_offset_min * pixels_per_minute)
         y_end = int(top + end_offset_min * pixels_per_minute)
         
-        logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
+        # Calculate event duration in minutes
+        event_duration_minutes = (event_end - event_start).total_seconds() / 60
+        
+        logging.info(f"Event: {event.summary}, duration: {event_duration_minutes} minutes, y_start={y_start}, y_end={y_end}")
         
         # Draw event block in RED
         red_image.rectangle([block_left + 2, y_start, block_right, y_end], outline=0, fill=0)
         
         # Draw event summary text
         summary = event.summary if len(event.summary) <= 15 else event.summary[:12] + "..."
-        red_image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
+        
+        # For short events (less than 60 minutes), top-align the text
+        text_y = y_start + 2  # Always top-align for short events
+        
+        # If event is longer than an hour, you could center it vertically
+        if event_duration_minutes >= 60:
+            # Calculate text height (approximate if getsize not available)
+            text_height = font.getsize(summary)[1] if hasattr(font, 'getsize') else 12
+            
+            # Only center if there's enough space for the text to fit
+            block_height = y_end - y_start
+            if block_height > text_height * 1.5:  # Ensure at least 50% extra space
+                text_y = y_start + (block_height - text_height) // 2
+        
+        red_image.text((block_left + 5, text_y), summary, font=font, fill=255)
     
     # Draw hour markers and labels in BLACK AND RED LAST
     for hour, y_marker in hour_positions:
