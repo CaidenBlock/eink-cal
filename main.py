@@ -185,7 +185,7 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         summary = event.summary if len(event.summary) <= 15 else event.summary[:12] + "..."
         
         # For short events (less than 60 minutes), top-align the text
-        text_y = y_start + 6  # Always top-align for short events
+        text_y = y_start - 2  # Always top-align for short events
         
         # If event is longer than an hour, you could center it vertically
         if event_duration_minutes >= 60:
@@ -201,7 +201,7 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
             
             # Only center if there's enough space for the text to fit
             block_height = y_end - y_start
-            if block_height > text_height * 1.5:  # Ensure at least 50% extra space
+            if block_height > text_height * 1.2:  # Ensure at least 50% extra space
                 text_y = y_start + (block_height - text_height) // 2
         
         red_image.text((block_left + 5, text_y), summary, font=font, fill=255)
