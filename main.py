@@ -4,9 +4,9 @@ import sys
 import os
 import requests
 from zoneinfo import ZoneInfo
-from ics import Calendar
-from ics.timeline import Timeline
-import datetime
+from ical.calendar_stream import IcsCalendarStream
+from ical.exceptions import CalendarParseError
+from datetime import datetime, timedelta
 picdir = './pic'
 fontdir = './font'
 import logging
@@ -16,17 +16,20 @@ from PIL import Image,ImageDraw,ImageFont
 import traceback
 import json
 
-def updateCal(calendar_keys):
-    all_events = []
-    for key in calendar_keys:
-        ics_url = secrets[key]
-        # Support webcal:// URLs
-        if ics_url.startswith("webcal://"):
-            ics_url = ics_url.replace("webcal://", "https://", 1)
-        response = requests.get(ics_url)
-        calendar = Calendar(response.text)
-        all_events.extend(calendar.events)
-    return all_events
+with open("secrets.json") as f:
+    secrets = json.load(f)
+
+# def updateCal(calendar_keys):
+#     all_events = []
+#     for key in calendar_keys:
+#         ics_url = secrets[key]
+#         # Support webcal:// URLs
+#         if ics_url.startswith("webcal://"):
+#             ics_url = ics_url.replace("webcal://", "https://", 1)
+#         response = requests.get(ics_url)
+#         calendar = Calendar(response.text)
+#         all_events.extend(calendar.events)
+#     return all_events
 
 def process_upcoming_events(events, event_amt=5):
     now = datetime.datetime.now(ZoneInfo("America/Chicago"))
@@ -49,14 +52,46 @@ def process_upcoming_events(events, event_amt=5):
                 name = name[:21] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font24, fill=0)
 
-def draw_day_blocks(events, image, font, epd_width, epd_height):
+def draw_day_blocks(ics_url, image, font, epd_width, epd_height):
     # Time window: 5AM today to 3AM tomorrow (22 hours)
-    tz = ZoneInfo("America/Chicago")
-    now = datetime.datetime.now(tz)
-    start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
-    if now.hour < 5:
-        start_time -= datetime.timedelta(days=1)
-    end_time = start_time + datetime.timedelta(hours=22)
+    response = requests.get(ics_url)
+    if response.status_code != 200:
+        print(f"Failed to fetch ICS file: HTTP {response.status_code}")
+    else:
+        try:
+            # Parse the ICS content
+            calendar = IcsCalendarStream.calendar_from_ics(response.text)
+            
+            # Define date range to filter
+            tz = ZoneInfo("America/Chicago")
+            now = datetime.now(tz)
+            start_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
+            if now.hour < 5:
+                start_time -= timedelta(days=1)
+            end_time = start_time + timedelta(hours=22)
+            
+            print(f"Filtering events between {start_time} and {end_time}")
+            
+            # Filter events within the date range
+            filtered_events = [
+                event for event in calendar.timeline
+                if (event.dtend > start_time and event.dtstart < end_time)
+            ]
+            
+            print(f"Found {len(filtered_events)} events in the range")
+            
+            # Print filtered event summaries
+            for event in filtered_events:
+                print(f"Event: {event.summary}")
+                print(f"  Start: {event.dtstart}")
+                print(f"  End: {event.dtend}")
+                if hasattr(event, 'rrule') and event.rrule:
+                    print(f"  Recurrence: {event.rrule}")
+                print("---")
+            
+        except CalendarParseError as err:
+            print(f"Failed to parse ics file from {ics_url}: {err}")
+
 
     # Block area: rightmost 200 pixels
     block_left = epd_width - 200  # 440
@@ -67,59 +102,32 @@ def draw_day_blocks(events, image, font, epd_width, epd_height):
     time_window_minutes = (end_time - start_time).total_seconds() / 60
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
-
-    # Create a temporary calendar to use with Timeline
-    temp_calendar = Calendar()
-    for event in events:
-        temp_calendar.events.add(event)
-    
-    # Use Timeline to expand recurring events
-    timeline = Timeline(temp_calendar)
-    count = 0
-    
-    # Process all occurrences (including expanded recurring events)
-    for occ in timeline:
-        # Skip events outside our window
-        if occ.begin < start_time:
-            continue
-        if occ.begin > end_time:
-            break  # Timeline sorts by begin time, so we can break early
-            
-        count += 1
-        event_start = occ.begin.datetime.astimezone(tz)
-        event_end = occ.end.datetime.astimezone(tz)
-        
-        logging.info(f"Occurrence {count}: '{occ.name}' - {event_start} to {event_end}")
-        
-        # Clamp event start/end to window
-        block_start = max(event_start, start_time)
-        block_end = min(event_end, end_time)
-
+    # Draw timeline blocks for each event
+    for event in filtered_events:
+        # Clamp event start/end to the time window
+        event_start = max(event.dtstart, start_time)
+        event_end = min(event.dtend, end_time)
         # Calculate vertical positions
-        start_offset = (block_start - start_time).total_seconds() / 60
-        end_offset = (block_end - start_time).total_seconds() / 60
-        y1 = int(top + start_offset * pixels_per_minute)
-        y2 = int(top + end_offset * pixels_per_minute)
+        start_offset_min = (event_start - start_time).total_seconds() / 60
+        end_offset_min = (event_end - start_time).total_seconds() / 60
+        y_start = int(top + start_offset_min * pixels_per_minute)
+        y_end = int(top + end_offset_min * pixels_per_minute)
+        # Draw block
+        image.rectangle([block_left, y_start, block_right, y_end], fill=0)
+        # Draw event summary text (truncate if needed)
+        summary = event.summary if len(event.summary) <= 18 else event.summary[:15] + "..."
+        image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
 
-        # Draw rectangle for the event
-        image.rectangle([block_left, y1, block_right, y2], outline=0, fill=0)
-
-        # Draw event name (trimmed)
-        name = occ.name
-        if len(name) > 18:
-            name = name[:18] + "..."
-        image.text((block_left + 5, y1 + 2), name, font=font, fill=255)
-
-        # Draw start time at bottom of block
-        time_str = block_start.strftime('%H:%M')
-        image.text((block_left + 5, y2 - 18), time_str, font=font, fill=255)
-    
-    logging.info(f"Total occurrences processed: {count}")
-
+    # Draw hour markers
+    for hour in range(start_time.hour, (end_time + datetime.timedelta(minutes=1)).hour + 1):
+        marker_time = start_time.replace(hour=hour, minute=0)
+        if marker_time > end_time:
+            break
+        y_marker = int(top + ((marker_time - start_time).total_seconds() / 60) * pixels_per_minute)
+        image.line([block_left, y_marker, block_right, y_marker], fill=128)
+        image.text((block_left + 2, y_marker - 8), f"{hour:02d}:00", font=font, fill=128)
 
 
-with open("secrets.json") as f:
-    secrets = json.load(f)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -150,14 +158,13 @@ try:
     date_str = datetime.datetime.now().strftime('%Y-%m-%d')
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
-    calendar1_events = updateCal(["calendar1"])
-    calendar2_3_merged_events = updateCal(["calendar2", "calendar3"])
+    # calendar1_events = updateCal(["calendar1"])
 
     # Draw calendar 1 events (up to 5)
-    process_upcoming_events(calendar1_events, event_amt=5)
+    # process_upcoming_events(calendar1_events, event_amt=5)
 
     # Draw merged calendar 2 and 3 events (up to 5, adjust y offset if needed)
-    draw_day_blocks(calendar2_3_merged_events, drawblack, font18, epd.width, epd.height)
+    draw_day_blocks("calendar2", drawblack, font18, epd.width, epd.height)
 
     epd.display(epd.getbuffer(HBlackimage), epd.getbuffer(HRimage))
     time.sleep(2)
