@@ -68,11 +68,11 @@ def process_upcoming_events(calendar, event_amt=5):
         for i, event in enumerate(upcoming_events[:event_amt]):
             y = 75 + i * 30
             start_dt = event.dtstart.astimezone(ZoneInfo("America/Chicago"))
-            start_str = start_dt.strftime('%m-%d@%H:%M')
+            start_str = start_dt.strftime('%m-%d @ %H:%M')
             name = event.summary
             if len(name) > 18:
                 name = name[:18] + "..."
-            drawblack.text((10, y), f"{start_str} {name}", font=font24fs, fill=0)
+            drawblack.text((10, y), f"{start_str} - {name}", font=font18fs, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
     cache_dir = Path('./cache')
@@ -178,7 +178,7 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
         
         # Draw event block in RED
-        red_image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
+        red_image.rectangle([block_left + 2, y_start, block_right, y_end], outline=0, fill=0)
         
         # Draw event summary text
         summary = event.summary if len(event.summary) <= 15 else event.summary[:12] + "..."
@@ -198,7 +198,7 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         # Calculate text position (same for both layers)
         text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
         text_x = block_right - text_width - 5
-        text_y = y_marker + 6
+        text_y = y_marker
         
         # Draw hour text at right edge in BLACK (on black layer)
         black_image.text((text_x, text_y), time_str, font=font, fill=0)
