@@ -32,7 +32,7 @@ with open("secrets.json") as f:
 #     return all_events
 
 def process_upcoming_events(events, event_amt=5):
-    now = datetime.datetime.now(ZoneInfo("America/Chicago"))
+    now = datetime.now(ZoneInfo("America/Chicago"))
     today = now.date()
     upcoming_events = []
     for event in sorted(events, key=lambda e: e.begin):
@@ -155,7 +155,7 @@ try:
     drawred = ImageDraw.Draw(HRimage)
     drawblack.line((0, 60, epd.width, 60), fill = 0, width=3)
 
-    date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+    date_str = datetime.now().strftime('%Y-%m-%d')
     drawred.text((10, 10), date_str, font = font32, fill = 0)
 
     # calendar1_events = updateCal(["calendar1"])
