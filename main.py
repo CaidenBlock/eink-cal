@@ -119,7 +119,7 @@ def draw_day_blocks(ics_url, image, font, epd_width, epd_height):
         image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
 
     # Draw hour markers
-    for hour in range(start_time.hour, (end_time + datetime.timedelta(minutes=1)).hour + 1):
+    for hour in range(start_time.hour, (end_time + timedelta(minutes=1)).hour + 1):
         marker_time = start_time.replace(hour=hour, minute=0)
         if marker_time > end_time:
             break
