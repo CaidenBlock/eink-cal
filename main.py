@@ -238,7 +238,7 @@ try:
     drawblack.line((epd.width - 200, 0, epd.width - 200, epd.height), fill = 0, width=3)
 
     date_str = datetime.now().strftime('%Y-%m-%d')
-    drawred.text((10, 10), date_str, font = font48fs, fill = 0)
+    drawred.text((10, 0), date_str, font = font48fs, fill = 0)
 
     # Get calendar1 (always fresh)
     calendar1_events = updateCal(["calendar1"])
