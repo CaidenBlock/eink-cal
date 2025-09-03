@@ -162,7 +162,30 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         y_marker = int(top + minutes_from_start * pixels_per_minute)
         hour_positions.append((hour, y_marker))
     
-    # Draw timeline blocks for each event (in RED)
+    # Draw hour markers and labels in BLACK AND RED
+    # Do this FIRST so they're drawn before the events
+    for hour, y_marker in hour_positions:
+        # Draw solid line in BLACK (on black layer)
+        black_image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
+        
+        # Also draw the same line in WHITE (on red layer)
+        red_image.line([block_left, y_marker, block_right, y_marker], fill=255, width=1)
+        
+        # Use 24-hour format without am/pm
+        time_str = f"{hour}"
+        
+        # Calculate text position (same for both layers)
+        text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
+        text_x = block_right - text_width - 5
+        text_y = y_marker + 6
+        
+        # Draw hour text at right edge in BLACK (on black layer)
+        black_image.text((text_x, text_y), time_str, font=font, fill=0)
+        
+        # Also draw the same text in WHITE (on red layer)
+        red_image.text((text_x, text_y), time_str, font=font, fill=255)
+    
+    # Now draw timeline blocks for each event (in RED)
     for event in filtered_events:
         # Clamp event start/end to the time window
         event_start = max(event.dtstart, start_time)
@@ -177,25 +200,12 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         
         logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
         
-        # Draw a red block that leaves room for hour markers on the right side
-        red_rect_right = block_right - 20  # Leave space for hour text on the right
-        red_image.rectangle([block_left, y_start, red_rect_right, y_end], outline=0, fill=0)
+        # Draw event block in RED (full width now, since hour markers are drawn in both layers)
+        red_image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
         
-        # Draw event summary text (shorter to fit in the narrower block)
+        # Draw event summary text
         summary = event.summary if len(event.summary) <= 15 else event.summary[:12] + "..."
         red_image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
-    
-    # Draw hour markers and labels in BLACK
-    for hour, y_marker in hour_positions:
-        # Draw solid line in BLACK
-        black_image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
-        
-        # Use 24-hour format without am/pm
-        time_str = f"{hour}"
-        
-        # Draw hour text at right edge in BLACK
-        text_width = font.getsize(time_str)[0] if hasattr(font, 'getsize') else len(time_str) * 8
-        black_image.text((block_right - text_width - 5, y_marker + 6), time_str, font=font, fill=0)
     
 
 logging.basicConfig(level=logging.DEBUG)
