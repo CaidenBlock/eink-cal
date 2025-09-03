@@ -151,7 +151,31 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
     vertical_pixels = bottom - top
     pixels_per_minute = vertical_pixels / time_window_minutes
     
-    # Draw timeline blocks for each event
+    # Draw hour markers FIRST (before event blocks)
+    for hour in range(start_time.hour, (end_time + timedelta(minutes=1)).hour + 1):
+        marker_time = start_time.replace(hour=hour, minute=0)
+        if marker_time > end_time:
+            break
+        y_marker = int(top + ((marker_time - start_time).total_seconds() / 60) * pixels_per_minute)
+        
+        # Draw dashed line
+        dash_length = 5  # Length of each dash
+        gap_length = 3   # Length of gap between dashes
+        x = block_left
+        while x < block_right:
+            line_end = min(x + dash_length, block_right)
+            image.line([x, y_marker, line_end, y_marker], fill=0)  # Changed to black (0)
+            x = line_end + gap_length
+        
+        # Format hour text in 12-hour format with am/pm
+        hour_str = f"{hour % 12 or 12}"
+        am_pm = "a" if hour < 12 else "p"
+        time_str = f"{hour_str}{am_pm}"
+        
+        # Draw hour text in black (0), not white (255)
+        image.text((block_left + 2, y_marker - 8), time_str, font=font, fill=0)
+    
+    # Draw timeline blocks for each event AFTER hour markers
     for event in filtered_events:
         # Clamp event start/end to the time window
         event_start = max(event.dtstart, start_time)
@@ -166,15 +190,6 @@ def draw_day_blocks(calendar, image, font, epd_width, epd_height):
         # Draw event summary text (truncate if needed)
         summary = event.summary if len(event.summary) <= 18 else event.summary[:15] + "..."
         image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
-
-    # Draw hour markers
-    for hour in range(start_time.hour, (end_time + timedelta(minutes=1)).hour + 1):
-        marker_time = start_time.replace(hour=hour, minute=0)
-        if marker_time > end_time:
-            break
-        y_marker = int(top + ((marker_time - start_time).total_seconds() / 60) * pixels_per_minute)
-        image.line([block_left, y_marker, block_right, y_marker], fill=255)
-        image.text((block_left + 2, y_marker - 8), f"{hour:02d}:00", font=font, fill=255)
 
 logging.basicConfig(level=logging.DEBUG)
 
