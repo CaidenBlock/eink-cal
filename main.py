@@ -162,8 +162,29 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         y_marker = int(top + minutes_from_start * pixels_per_minute)
         hour_positions.append((hour, y_marker))
     
-    # Draw hour markers and labels in BLACK AND RED
-    # Do this FIRST so they're drawn before the events
+    # Draw timeline blocks for each event (in RED) FIRST
+    for event in filtered_events:
+        # Clamp event start/end to the time window
+        event_start = max(event.dtstart, start_time)
+        event_end = min(event.dtend, end_time)
+        
+        # Calculate vertical positions
+        start_offset_min = (event_start - start_time).total_seconds() / 60
+        end_offset_min = (event_end - start_time).total_seconds() / 60
+        
+        y_start = int(top + start_offset_min * pixels_per_minute)
+        y_end = int(top + end_offset_min * pixels_per_minute)
+        
+        logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
+        
+        # Draw event block in RED
+        red_image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
+        
+        # Draw event summary text
+        summary = event.summary if len(event.summary) <= 15 else event.summary[:12] + "..."
+        red_image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
+    
+    # Draw hour markers and labels in BLACK AND RED LAST
     for hour, y_marker in hour_positions:
         # Draw solid line in BLACK (on black layer)
         black_image.line([block_left, y_marker, block_right, y_marker], fill=0, width=1)
@@ -184,28 +205,6 @@ def draw_day_blocks(calendar, black_image, red_image, font, epd_width, epd_heigh
         
         # Also draw the same text in WHITE (on red layer)
         red_image.text((text_x, text_y), time_str, font=font, fill=255)
-    
-    # Now draw timeline blocks for each event (in RED)
-    for event in filtered_events:
-        # Clamp event start/end to the time window
-        event_start = max(event.dtstart, start_time)
-        event_end = min(event.dtend, end_time)
-        
-        # Calculate vertical positions
-        start_offset_min = (event_start - start_time).total_seconds() / 60
-        end_offset_min = (event_end - start_time).total_seconds() / 60
-        
-        y_start = int(top + start_offset_min * pixels_per_minute)
-        y_end = int(top + end_offset_min * pixels_per_minute)
-        
-        logging.info(f"Event: {event.summary}, y_start={y_start}, y_end={y_end}")
-        
-        # Draw event block in RED (full width now, since hour markers are drawn in both layers)
-        red_image.rectangle([block_left, y_start, block_right, y_end], outline=0, fill=0)
-        
-        # Draw event summary text
-        summary = event.summary if len(event.summary) <= 15 else event.summary[:12] + "..."
-        red_image.text((block_left + 5, y_start + 2), summary, font=font, fill=255)
     
 
 logging.basicConfig(level=logging.DEBUG)
