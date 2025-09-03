@@ -191,9 +191,9 @@ try:
     logging.info("Drawing")    
     font24fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 24)
     font24 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 24)
-    font18fs = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
+    font18fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 18)
     font18 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
-    font32fs = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 32)
+    font32fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 32)
 
 
     # Drawing on the Horizontal image
