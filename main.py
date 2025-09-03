@@ -49,7 +49,7 @@ def updateCal(calendar_keys):
         logging.error("No calendars were successfully parsed")
         return None
 
-def process_upcoming_events(calendar, event_amt=5):
+def process_upcoming_events(calendar, event_amt):
     now = datetime.now(ZoneInfo("America/Chicago"))
     today = now.date()
     
@@ -70,8 +70,8 @@ def process_upcoming_events(calendar, event_amt=5):
             start_dt = event.dtstart.astimezone(ZoneInfo("America/Chicago"))
             start_str = start_dt.strftime('%m-%d @ %H:%M')
             name = event.summary
-            if len(name) > 20:
-                name = name[:20] + "..."
+            if len(name) > 24:
+                name = name[:24] + "..."
             drawblack.text((10, y), f"{start_str} - {name}", font=font20fs, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
@@ -222,7 +222,7 @@ try:
     logging.info("Drawing")    
     font24fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 24)
     font18fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 18)
-    font20fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 18)
+    font20fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 20)
     font32fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 32)
     font48fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 48)
 
@@ -241,7 +241,7 @@ try:
 
     # Get calendar1 (always fresh)
     calendar1_events = updateCal(["calendar1"])
-    process_upcoming_events(calendar1_events, event_amt=5)
+    process_upcoming_events(calendar1_events, event_amt=7)
 
     # Get calendar2 (cached)
     ics_url = secrets["calendar2"]
