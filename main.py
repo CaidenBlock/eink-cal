@@ -70,9 +70,9 @@ def process_upcoming_events(calendar, event_amt=5):
             start_dt = event.dtstart.astimezone(ZoneInfo("America/Chicago"))
             start_str = start_dt.strftime('%m-%d @ %H:%M')
             name = event.summary
-            if len(name) > 18:
-                name = name[:18] + "..."
-            drawblack.text((10, y), f"{start_str} - {name}", font=font18fs, fill=0)
+            if len(name) > 20:
+                name = name[:20] + "..."
+            drawblack.text((10, y), f"{start_str} - {name}", font=font20fs, fill=0)
 
 def get_cached_calendar(ics_url, cache_time_minutes=60):
     cache_dir = Path('./cache')
@@ -221,9 +221,8 @@ try:
     # Drawing on the image
     logging.info("Drawing")    
     font24fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 24)
-    font24 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 24)
     font18fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 18)
-    font18 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 18)
+    font20fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 18)
     font32fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 32)
     font48fs = ImageFont.truetype(os.path.join(fontdir, 'FSEX302.ttf'), 48)
 
