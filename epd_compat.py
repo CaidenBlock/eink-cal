@@ -35,7 +35,7 @@ else:
             for y in range(self.height):
                 for x in range(self.width):
                     if red.getpixel((x, y)) == 0:
-                        combined.putpixel((x, y), (200, 0, 0))
+                        combined.putpixel((x, y), (160, 0, 0))
             combined.save("sim_output/combined.bmp", "BMP")
             logging.info("Simulated display: combined.bmp written")
         def sleep(self):
