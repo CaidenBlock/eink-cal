@@ -14,7 +14,7 @@ import time as systime
 picdir = './pic'
 fontdir = './font'
 import logging
-from waveshare_epd import epd7in5bc
+from epd_compat import epd7in5bc
 import time
 from PIL import Image,ImageDraw,ImageFont
 import traceback

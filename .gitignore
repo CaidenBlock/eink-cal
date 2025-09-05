@@ -1,3 +1,6 @@
 secrets.json
 class.ics
 cache/
+__pycache__/
+waveshare_epd/__pycache__/
+sim_output/
