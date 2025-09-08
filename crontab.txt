@@ -1,0 +1,13 @@
+# E-Ink Calendar Display Update Schedule
+
+# Update calendar every hour during waking hours
+0 7-23 * * * cd /path/to/eink && python main.py
+
+# Force update just after midnight to ensure date changes
+1 0 * * * cd /path/to/eink && python main.py --force
+
+# More frequent updates during work hours (weekdays)
+*/20 9-17 * * 1-5 cd /path/to/eink && python main.py
+
+# Log rotation weekly to prevent huge log files
+0 0 * * 0 cd /path/to/eink && mv cache/calendar_display.log cache/calendar_display.log.old
