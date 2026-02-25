@@ -28,7 +28,7 @@ class CalendarManager:
     def get_calendar(self, calendar_key, use_cache=True):
         """Get a calendar by key, using cache if specified"""
         if calendar_key not in self.secrets:
-            logging.error(f"Calendar key '{calendar_key}' not found in secrets")
+            logging.error("Calendar key '%s' not found in secrets", calendar_key)
             return None
             
         ics_url = self.secrets[calendar_key]
@@ -51,14 +51,14 @@ class CalendarManager:
                         logging.info(f"Using cached calendar data ({file_age_minutes:.1f} min old)")
                         return pickle.load(f)
                 except Exception as e:
-                    logging.error(f"Error loading cache: {e}")
+                    logging.error("Error loading cache: %s", e)
 
         # Fetch and parse the calendar
         return self.fetch_calendar(ics_url, cache_file)
         
     def fetch_calendar(self, ics_url, cache_file=None):
         """Fetch a calendar from the web and optionally cache it"""
-        logging.info(f"Fetching fresh calendar data from {ics_url}")
+        logging.info("Fetching fresh calendar data from %s", ics_url)
         
         # Support webcal:// URLs
         if ics_url.startswith("webcal://"):
@@ -67,7 +67,7 @@ class CalendarManager:
         try:
             response = requests.get(ics_url, timeout=10)
             if response.status_code != 200:
-                logging.error(f"Failed to fetch ICS file: HTTP {response.status_code}")
+                logging.error("Failed to fetch ICS file: HTTP %s", response.status_code)
                 return None
                 
             calendar = IcsCalendarStream.calendar_from_ics(response.text)

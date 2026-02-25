@@ -1,0 +1,4 @@
+{
+  "python.defaultInterpreterPath": "/home/caiden/git/eink-cal/.venv/bin/python",
+  "python.terminal.activateEnvironment": true
+}

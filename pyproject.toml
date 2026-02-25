@@ -1,0 +1,15 @@
+[project]
+name = "eink-cal"
+version = "0.1.0"
+description = "E-ink calendar display app"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ical>=13.2.0",
+    "ics",
+    "pillow",
+    "requests",
+]
+
+[tool.uv]
+package = false
